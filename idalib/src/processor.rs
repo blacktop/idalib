@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
+use crate::Address;
 use crate::ffi::processor::*;
 use crate::idb::IDB;
-use crate::Address;
 
 pub use crate::ffi::processor::ids as id;
 

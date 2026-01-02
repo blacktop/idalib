@@ -529,9 +529,13 @@ pub mod hexrays {
         carg_t, carglist_t, cfuncptr_t, init_hexrays_plugin, term_hexrays_plugin,
     };
     pub use super::ffix::{
-        cblock_iter, idalib_hexrays_cblock_iter, idalib_hexrays_cblock_iter_next,
-        idalib_hexrays_cblock_len, idalib_hexrays_cfunc_pseudocode, idalib_hexrays_cfuncptr_inner,
-        idalib_hexrays_decompile_func,
+        addr_range, cblock_iter, eamap_result, idalib_hexrays_cblock_iter,
+        idalib_hexrays_cblock_iter_next, idalib_hexrays_cblock_len,
+        idalib_hexrays_cfunc_find_stmts_at, idalib_hexrays_cfunc_get_stmt_bounds,
+        idalib_hexrays_cfunc_has_eamap, idalib_hexrays_cfunc_pseudocode,
+        idalib_hexrays_cfuncptr_inner, idalib_hexrays_cinsn_ea, idalib_hexrays_cinsn_op,
+        idalib_hexrays_cinsn_print, idalib_hexrays_decompile_func, idalib_hexrays_eamap_result_len,
+        idalib_hexrays_eamap_result_next, idalib_hexrays_eamap_result_reset,
     };
 
     unsafe impl cxx::ExternType for cfunc_t {
@@ -717,6 +721,13 @@ mod ffix {
         desc: String,
     }
 
+    /// Address range for statement boundaries
+    #[derive(Debug, Clone, Copy, Default)]
+    struct addr_range {
+        start: u64,
+        end: u64,
+    }
+
     unsafe extern "C++" {
         include!("autocxxgen_ffi.h");
         include!("idalib.hpp");
@@ -765,6 +776,7 @@ mod ffix {
         type cinsn_t = super::hexrays::cinsn_t;
 
         type cblock_iter;
+        type eamap_result;
 
         type plugin_t = super::ffi::plugin_t;
 
@@ -806,6 +818,28 @@ mod ffix {
         unsafe fn idalib_hexrays_cblock_iter(b: *mut cblock_t) -> UniquePtr<cblock_iter>;
         unsafe fn idalib_hexrays_cblock_iter_next(slf: Pin<&mut cblock_iter>) -> *mut cinsn_t;
         unsafe fn idalib_hexrays_cblock_len(b: *mut cblock_t) -> usize;
+
+        // Eamap support - address to statements mapping
+        unsafe fn idalib_hexrays_cfunc_has_eamap(f: *mut cfunc_t) -> bool;
+        unsafe fn idalib_hexrays_cfunc_find_stmts_at(
+            f: *mut cfunc_t,
+            addr: u64,
+        ) -> UniquePtr<eamap_result>;
+        unsafe fn idalib_hexrays_eamap_result_len(r: &eamap_result) -> usize;
+        unsafe fn idalib_hexrays_eamap_result_next(r: Pin<&mut eamap_result>) -> *mut cinsn_t;
+        unsafe fn idalib_hexrays_eamap_result_reset(r: Pin<&mut eamap_result>);
+
+        // Statement info
+        unsafe fn idalib_hexrays_cinsn_ea(insn: *const cinsn_t) -> u64;
+        unsafe fn idalib_hexrays_cinsn_op(insn: *const cinsn_t) -> c_int;
+        unsafe fn idalib_hexrays_cinsn_print(insn: *const cinsn_t, func: *const cfunc_t) -> String;
+
+        // Boundaries support - statement to address range mapping
+        unsafe fn idalib_hexrays_cfunc_get_stmt_bounds(
+            f: *mut cfunc_t,
+            insn: *const cinsn_t,
+            out: *mut addr_range,
+        ) -> bool;
 
         unsafe fn idalib_inf_get_version() -> u16;
         unsafe fn idalib_inf_get_genflags() -> u16;

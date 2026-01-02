@@ -5,10 +5,10 @@ use std::pin::Pin;
 use autocxx::moveit::Emplace;
 use bitflags::bitflags;
 
+use crate::Address;
 use crate::ffi::range_t;
 use crate::ffi::segment::*;
 use crate::idb::IDB;
-use crate::Address;
 
 pub struct Segment<'a> {
     ptr: *mut segment_t,
@@ -247,11 +247,7 @@ impl<'a> Segment<'a> {
     pub fn name(&self) -> Option<String> {
         let name = unsafe { idalib_segm_name(self.ptr) }.ok()?;
 
-        if name.is_empty() {
-            None
-        } else {
-            Some(name)
-        }
+        if name.is_empty() { None } else { Some(name) }
     }
 
     pub fn alignment(&self) -> SegmentAlignment {

@@ -1,14 +1,14 @@
 use std::marker::PhantomData;
 
+use crate::ffi::BADADDR;
 use crate::ffi::bytes::idalib_get_bytes;
 use crate::ffi::strings::{
     build_strlist, clear_strlist, get_strlist_qty, idalib_get_strlist_item_addr,
     idalib_get_strlist_item_length,
 };
-use crate::ffi::BADADDR;
 
-use crate::idb::IDB;
 use crate::Address;
+use crate::idb::IDB;
 
 pub type StringIndex = usize;
 

@@ -66,7 +66,9 @@ impl<'a> NameList<'a> {
             return None;
         }
 
-        let name = unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned();
+        let name = unsafe { CStr::from_ptr(name) }
+            .to_string_lossy()
+            .into_owned();
 
         let mut properties = NameProperties::empty();
 

@@ -1,11 +1,11 @@
 use std::ffi::CString;
 use std::marker::PhantomData;
 
+use crate::ffi::BADADDR;
 use crate::ffi::bookmarks::{
     idalib_bookmarks_t_erase, idalib_bookmarks_t_find_index, idalib_bookmarks_t_get,
     idalib_bookmarks_t_get_desc, idalib_bookmarks_t_mark, idalib_bookmarks_t_size,
 };
-use crate::ffi::BADADDR;
 
 use crate::idb::IDB;
 use crate::{Address, IDAError};
@@ -73,11 +73,7 @@ impl<'a> Bookmarks<'a> {
     pub fn get_description_by_index(&self, idx: BookmarkIndex) -> Option<String> {
         let s = unsafe { idalib_bookmarks_t_get_desc(idx.into()) };
 
-        if s.is_empty() {
-            None
-        } else {
-            Some(s)
-        }
+        if s.is_empty() { None } else { Some(s) }
     }
 
     pub fn erase(&self, ea: Address) -> Result<(), IDAError> {
