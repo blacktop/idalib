@@ -7,6 +7,7 @@ use crate::ffi::BADADDR;
 use crate::ffi::bytes::*;
 use crate::ffi::comments::{append_cmt, idalib_get_cmt, set_cmt};
 use crate::ffi::conversions::idalib_ea2str;
+use crate::ffi::lines::idalib_generate_disasm_line;
 use crate::ffi::entry::{get_entry, get_entry_ordinal, get_entry_qty};
 use crate::ffi::func::{
     get_func, get_func_qty, getn_func, idalib_get_func_cmt, idalib_set_func_cmt,
@@ -520,6 +521,14 @@ impl IDB {
 
     pub fn address_to_string(&self, ea: Address) -> Option<String> {
         let s = unsafe { idalib_ea2str(ea.into()) };
+
+        if s.is_empty() { None } else { Some(s) }
+    }
+
+    /// Generate a disassembly line at the given address.
+    /// Returns the formatted disassembly text with color codes stripped.
+    pub fn disasm_line(&self, ea: Address) -> Option<String> {
+        let s = unsafe { idalib_generate_disasm_line(ea.into()) };
 
         if s.is_empty() { None } else { Some(s) }
     }

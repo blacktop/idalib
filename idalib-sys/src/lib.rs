@@ -737,6 +737,7 @@ mod ffix {
         include!("segm_extras.h");
         include!("search_extras.h");
         include!("strings_extras.h");
+        include!("lines_extras.h");
 
         type c_short = autocxx::c_short;
         type c_int = autocxx::c_int;
@@ -1040,6 +1041,9 @@ mod ffix {
             minor: *mut c_int,
             build: *mut c_int,
         ) -> bool;
+
+        // lines
+        unsafe fn idalib_generate_disasm_line(ea: c_ulonglong) -> String;
     }
 }
 
@@ -1194,6 +1198,10 @@ pub mod comments {
 
 pub mod conversions {
     pub use super::ffix::idalib_ea2str;
+}
+
+pub mod lines {
+    pub use super::ffix::idalib_generate_disasm_line;
 }
 
 pub mod bookmarks {
