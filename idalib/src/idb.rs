@@ -604,6 +604,33 @@ impl IDB {
         crate::types::get_local_type(ordinal)
     }
 
+    pub fn declare_type(&self, decl: &str, relaxed: bool, replace: bool) -> crate::types::DeclaredType {
+        crate::types::declare_type(decl, relaxed, replace)
+    }
+
+    pub fn declare_types(&self, decls: &str, relaxed: bool) -> i32 {
+        crate::types::declare_types(decls, relaxed)
+    }
+
+    pub fn apply_decl_type(
+        &self,
+        addr: u64,
+        decl: &str,
+        relaxed: bool,
+        delay: bool,
+        strict: bool,
+    ) -> bool {
+        crate::types::apply_decl_type(addr, decl, relaxed, delay, strict)
+    }
+
+    pub fn apply_named_type(&self, addr: u64, name: &str) -> bool {
+        crate::types::apply_named_type(addr, name)
+    }
+
+    pub fn guess_type(&self, id: u64) -> crate::types::GuessType {
+        crate::types::guess_type(id)
+    }
+
     pub fn frame_info(&self, ea: Address) -> Option<crate::frame::FrameInfo> {
         crate::frame::get_frame_info(ea.into())
     }

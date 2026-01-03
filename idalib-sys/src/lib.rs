@@ -757,6 +757,21 @@ mod ffix {
     }
 
     #[derive(Debug, Clone, Default)]
+    struct type_decl_result {
+        code: i32,
+        name: String,
+        decl: String,
+        kind: String,
+    }
+
+    #[derive(Debug, Clone, Default)]
+    struct type_guess_result {
+        code: i32,
+        decl: String,
+        kind: String,
+    }
+
+    #[derive(Debug, Clone, Default)]
     struct frame_info {
         frame_size: u64,
         ret_size: i32,
@@ -1167,6 +1182,24 @@ mod ffix {
             index: c_uint,
             out_tid: &mut u64,
         ) -> bool;
+
+        // types
+        unsafe fn idalib_declare_type(
+            decl: *const c_char,
+            relaxed: bool,
+            replace: bool,
+            out: &mut type_decl_result,
+        ) -> bool;
+        unsafe fn idalib_declare_types(decls: *const c_char, relaxed: bool) -> c_int;
+        unsafe fn idalib_apply_decl_type(
+            ea: u64,
+            decl: *const c_char,
+            relaxed: bool,
+            delay: bool,
+            strict: bool,
+        ) -> bool;
+        unsafe fn idalib_apply_named_type(ea: u64, name: *const c_char) -> bool;
+        unsafe fn idalib_guess_tinfo(id: u64, out: &mut type_guess_result) -> bool;
     }
 }
 
@@ -1379,7 +1412,11 @@ pub mod udt {
 }
 
 pub mod types {
-    pub use super::ffix::{idalib_get_local_type, local_type_info};
+    pub use super::ffix::{
+        idalib_apply_decl_type, idalib_apply_named_type, idalib_declare_type,
+        idalib_declare_types, idalib_get_local_type, idalib_guess_tinfo, local_type_info,
+        type_decl_result, type_guess_result,
+    };
 }
 
 pub mod frame {
