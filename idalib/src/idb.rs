@@ -18,6 +18,7 @@ use crate::ffi::ida::{
 use crate::ffi::insn::decode;
 use crate::ffi::lines::idalib_generate_disasm_line;
 use crate::ffi::loader::find_plugin;
+use crate::ffi::name::set_name;
 use crate::ffi::processor::get_ph;
 use crate::ffi::search::{idalib_find_defined, idalib_find_imm, idalib_find_text};
 use crate::ffi::segment::{get_segm_by_name, get_segm_qty, getnseg, getseg};
@@ -34,6 +35,7 @@ use crate::plugin::Plugin;
 use crate::processor::Processor;
 use crate::segment::{Segment, SegmentId};
 use crate::strings::StringList;
+use crate::udt::{self, UdtInfo, UdtMember};
 use crate::xref::{XRef, XRefQuery};
 use crate::{Address, AddressFlags, IDAError, IDARuntimeHandle, prepare_library};
 
@@ -459,6 +461,45 @@ impl IDB {
         }
     }
 
+    pub fn set_name(&self, ea: Address, name: impl AsRef<str>) -> Result<(), IDAError> {
+        self.set_name_with_flags(ea, name, 0)
+    }
+
+    pub fn set_name_with_flags(
+        &self,
+        ea: Address,
+        name: impl AsRef<str>,
+        flags: i32,
+    ) -> Result<(), IDAError> {
+        let s = CString::new(name.as_ref()).map_err(IDAError::ffi)?;
+        if unsafe { set_name(ea.into(), s.as_ptr(), autocxx::c_int(flags)) } {
+            Ok(())
+        } else {
+            Err(IDAError::ffi_with(format!(
+                "failed to set name at {ea:#x}"
+            )))
+        }
+    }
+
+    pub fn patch_bytes(&self, ea: Address, bytes: &[u8]) -> Result<(), IDAError> {
+        let mut buf = bytes.to_vec();
+        if unsafe { idalib_patch_bytes(ea.into(), &mut buf) } {
+            Ok(())
+        } else {
+            Err(IDAError::ffi_with(format!(
+                "failed to patch bytes at {ea:#x}"
+            )))
+        }
+    }
+
+    pub fn load_debug_info(
+        &self,
+        path: impl AsRef<Path>,
+        verbose: bool,
+    ) -> Result<bool, IDAError> {
+        crate::ffi::ida::load_dbg_dbginfo(path, verbose)
+    }
+
     pub fn bookmarks(&self) -> Bookmarks<'_> {
         Bookmarks::new(self)
     }
@@ -517,6 +558,18 @@ impl IDB {
 
     pub fn names(&self) -> crate::name::NameList<'_> {
         NameList::new(self)
+    }
+
+    pub fn udt_ordinal_limit(&self) -> u32 {
+        udt::ordinal_limit()
+    }
+
+    pub fn udt_info(&self, ordinal: u32) -> Option<UdtInfo> {
+        udt::get_udt_info(ordinal)
+    }
+
+    pub fn udt_member(&self, ordinal: u32, index: u32) -> Option<UdtMember> {
+        udt::get_udt_member(ordinal, index)
     }
 
     pub fn address_to_string(&self, ea: Address) -> Option<String> {

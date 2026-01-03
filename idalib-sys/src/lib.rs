@@ -377,6 +377,7 @@ include_cpp! {
     generate!("retrieve_input_file_size")
 
     // name(s)
+    generate!("set_name")
     generate!("get_nlist_idx")
     generate!("get_nlist_size")
     generate!("get_nlist_ea")
@@ -728,6 +729,23 @@ mod ffix {
         end: u64,
     }
 
+    #[derive(Debug, Clone, Default)]
+    struct udt_info {
+        name: String,
+        size: u64,
+        is_union: bool,
+        member_count: u32,
+    }
+
+    #[derive(Debug, Clone, Default)]
+    struct udt_member_info {
+        name: String,
+        type_name: String,
+        offset_bits: u64,
+        size_bits: u64,
+        is_bitfield: bool,
+    }
+
     unsafe extern "C++" {
         include!("autocxxgen_ffi.h");
         include!("idalib.hpp");
@@ -749,6 +767,7 @@ mod ffix {
         include!("search_extras.h");
         include!("strings_extras.h");
         include!("lines_extras.h");
+        include!("udt_extras.h");
 
         type c_short = autocxx::c_short;
         type c_int = autocxx::c_int;
@@ -789,6 +808,7 @@ mod ffix {
         ) -> c_int;
         unsafe fn idalib_check_license() -> bool;
         unsafe fn idalib_get_license_id(id: &mut [u8; 6]) -> bool;
+        unsafe fn idalib_load_dbg_dbginfo(path: *const c_char, verbose: bool) -> bool;
 
         // NOTE: we can't use uval_t here due to it resolving to c_ulonglong,
         // which causes `verify_extern_type` to fail...
@@ -1064,6 +1084,7 @@ mod ffix {
         unsafe fn idalib_get_dword(ea: c_ulonglong) -> u32;
         unsafe fn idalib_get_qword(ea: c_ulonglong) -> u64;
         unsafe fn idalib_get_bytes(ea: c_ulonglong, buf: &mut Vec<u8>) -> Result<usize>;
+        unsafe fn idalib_patch_bytes(ea: c_ulonglong, buf: &mut Vec<u8>) -> bool;
 
         unsafe fn idalib_get_input_file_path() -> String;
 
@@ -1078,6 +1099,15 @@ mod ffix {
 
         // lines
         unsafe fn idalib_generate_disasm_line(ea: c_ulonglong) -> String;
+
+        // udt/structs
+        unsafe fn idalib_get_ordinal_limit() -> c_uint;
+        unsafe fn idalib_get_udt_info(ordinal: c_uint, out: &mut udt_info) -> bool;
+        unsafe fn idalib_get_udt_member(
+            ordinal: c_uint,
+            index: c_uint,
+            out: &mut udt_member_info,
+        ) -> bool;
     }
 }
 
@@ -1207,6 +1237,7 @@ pub mod bytes {
     pub use super::ffi::{flags64_t, get_flags, is_code, is_data};
     pub use super::ffix::{
         idalib_get_byte, idalib_get_bytes, idalib_get_dword, idalib_get_qword, idalib_get_word,
+        idalib_patch_bytes,
     };
 }
 
@@ -1276,7 +1307,14 @@ pub mod nalt {
 pub mod name {
     pub use super::ffi::{
         get_nlist_ea, get_nlist_idx, get_nlist_name, get_nlist_size, is_in_nlist, is_public_name,
-        is_weak_name,
+        is_weak_name, set_name,
+    };
+}
+
+pub mod udt {
+    pub use super::ffix::{
+        idalib_get_ordinal_limit, idalib_get_udt_info, idalib_get_udt_member, udt_info,
+        udt_member_info,
     };
 }
 
@@ -1363,6 +1401,16 @@ pub mod ida {
         );
 
         unsafe { ffi::set_screen_ea(ea) }
+    }
+
+    pub fn load_dbg_dbginfo(path: impl AsRef<Path>, verbose: bool) -> Result<bool, IDAError> {
+        assert!(
+            is_main_thread(),
+            "IDA cannot function correctly when not running on the main thread"
+        );
+
+        let path = CString::new(path.as_ref().to_string_lossy().as_ref()).map_err(IDAError::ffi)?;
+        Ok(unsafe { ffix::idalib_load_dbg_dbginfo(path.as_ptr(), verbose) })
     }
 
     pub fn open_database(path: impl AsRef<Path>) -> Result<(), IDAError> {

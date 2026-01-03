@@ -49,6 +49,7 @@ fn main() {
         )
         .build()
         .expect("parsed correctly");
+    builder.file(ffi_path.join("udt_extras.cc"));
 
     #[cfg(target_os = "linux")]
     {

@@ -2,6 +2,7 @@
 
 #include "auto.hpp"
 #include "kernwin.hpp"
+#include "loader.hpp"
 #include "pro.h"
 
 #include <algorithm>
@@ -171,4 +172,8 @@ rust::String idalib_ea2str(ea_t ea) {
   } else {
     return rust::String();
   }
+}
+
+bool idalib_load_dbg_dbginfo(const char *path, bool verbose) {
+  return load_dbg_dbginfo(path, nullptr, BADADDR, verbose);
 }
