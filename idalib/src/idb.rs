@@ -639,6 +639,40 @@ impl IDB {
         crate::frame::get_frame_member(ea.into(), index)
     }
 
+    pub fn define_stack_var(
+        &self,
+        ea: Address,
+        name: Option<&str>,
+        offset: i64,
+        decl: &str,
+        relaxed: bool,
+    ) -> crate::frame::StackVarResult {
+        crate::frame::define_stack_var(ea.into(), name, offset, decl, relaxed)
+    }
+
+    pub fn delete_stack_var(
+        &self,
+        ea: Address,
+        name: Option<&str>,
+        offset: i64,
+        use_offset: bool,
+    ) -> crate::frame::StackVarResult {
+        crate::frame::delete_stack_var(ea.into(), name, offset, use_offset)
+    }
+
+    pub fn set_stack_var_type(
+        &self,
+        ea: Address,
+        name: Option<&str>,
+        offset: i64,
+        use_offset: bool,
+        decl: &str,
+        relaxed: bool,
+        strict: bool,
+    ) -> crate::frame::StackVarResult {
+        crate::frame::set_stack_var_type(ea.into(), name, offset, use_offset, decl, relaxed, strict)
+    }
+
     pub fn address_to_string(&self, ea: Address) -> Option<String> {
         let s = unsafe { idalib_ea2str(ea.into()) };
 

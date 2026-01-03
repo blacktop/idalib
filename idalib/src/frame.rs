@@ -1,5 +1,9 @@
-use crate::ffi::frame::{frame_info, frame_member_info, idalib_get_frame_info, idalib_get_frame_member};
+use crate::ffi::frame::{
+    frame_info, frame_member_info, idalib_define_stkvar, idalib_delete_stkvar, idalib_get_frame_info,
+    idalib_get_frame_member, idalib_set_stkvar_type, stkvar_result,
+};
 use autocxx::c_uint;
+use std::ffi::CString;
 
 #[derive(Debug, Clone)]
 pub struct FrameInfo {
@@ -28,6 +32,13 @@ pub struct FrameMember {
     pub size_bits: u64,
     pub is_bitfield: bool,
     pub part: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct StackVarResult {
+    pub code: i32,
+    pub name: String,
+    pub offset: i64,
 }
 
 pub fn get_frame_info(ea: u64) -> Option<FrameInfo> {
@@ -69,4 +80,86 @@ pub fn get_frame_member(ea: u64, index: u32) -> Option<FrameMember> {
         is_bitfield: out.is_bitfield,
         part: out.part,
     })
+}
+
+pub fn define_stack_var(
+    ea: u64,
+    name: Option<&str>,
+    offset: i64,
+    decl: &str,
+    relaxed: bool,
+) -> StackVarResult {
+    let mut out = stkvar_result::default();
+    let c_name = name.and_then(|v| CString::new(v).ok());
+    let c_decl = CString::new(decl).unwrap_or_else(|_| CString::new("").unwrap());
+    let _ = unsafe {
+        idalib_define_stkvar(
+            ea,
+            c_name.as_ref().map(|v| v.as_ptr()).unwrap_or(std::ptr::null()),
+            offset,
+            c_decl.as_ptr(),
+            relaxed,
+            &mut out,
+        )
+    };
+    StackVarResult {
+        code: out.code,
+        name: out.name,
+        offset: out.offset,
+    }
+}
+
+pub fn delete_stack_var(
+    ea: u64,
+    name: Option<&str>,
+    offset: i64,
+    use_offset: bool,
+) -> StackVarResult {
+    let mut out = stkvar_result::default();
+    let c_name = name.and_then(|v| CString::new(v).ok());
+    let _ = unsafe {
+        idalib_delete_stkvar(
+            ea,
+            c_name.as_ref().map(|v| v.as_ptr()).unwrap_or(std::ptr::null()),
+            offset,
+            use_offset,
+            &mut out,
+        )
+    };
+    StackVarResult {
+        code: out.code,
+        name: out.name,
+        offset: out.offset,
+    }
+}
+
+pub fn set_stack_var_type(
+    ea: u64,
+    name: Option<&str>,
+    offset: i64,
+    use_offset: bool,
+    decl: &str,
+    relaxed: bool,
+    strict: bool,
+) -> StackVarResult {
+    let mut out = stkvar_result::default();
+    let c_name = name.and_then(|v| CString::new(v).ok());
+    let c_decl = CString::new(decl).unwrap_or_else(|_| CString::new("").unwrap());
+    let _ = unsafe {
+        idalib_set_stkvar_type(
+            ea,
+            c_name.as_ref().map(|v| v.as_ptr()).unwrap_or(std::ptr::null()),
+            offset,
+            use_offset,
+            c_decl.as_ptr(),
+            relaxed,
+            strict,
+            &mut out,
+        )
+    };
+    StackVarResult {
+        code: out.code,
+        name: out.name,
+        offset: out.offset,
+    }
 }

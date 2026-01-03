@@ -800,6 +800,13 @@ mod ffix {
         part: String,
     }
 
+    #[derive(Debug, Clone, Default)]
+    struct stkvar_result {
+        code: i32,
+        name: String,
+        offset: i64,
+    }
+
     unsafe extern "C++" {
         include!("autocxxgen_ffi.h");
         include!("idalib.hpp");
@@ -872,6 +879,31 @@ mod ffix {
             ea: u64,
             index: c_uint,
             out: &mut frame_member_info,
+        ) -> bool;
+        unsafe fn idalib_define_stkvar(
+            ea: u64,
+            name: *const c_char,
+            offset: i64,
+            decl: *const c_char,
+            relaxed: bool,
+            out: &mut stkvar_result,
+        ) -> bool;
+        unsafe fn idalib_delete_stkvar(
+            ea: u64,
+            name: *const c_char,
+            offset: i64,
+            use_offset: bool,
+            out: &mut stkvar_result,
+        ) -> bool;
+        unsafe fn idalib_set_stkvar_type(
+            ea: u64,
+            name: *const c_char,
+            offset: i64,
+            use_offset: bool,
+            decl: *const c_char,
+            relaxed: bool,
+            strict: bool,
+            out: &mut stkvar_result,
         ) -> bool;
 
         // NOTE: we can't use uval_t here due to it resolving to c_ulonglong,
@@ -1421,7 +1453,8 @@ pub mod types {
 
 pub mod frame {
     pub use super::ffix::{
-        frame_info, frame_member_info, idalib_get_frame_info, idalib_get_frame_member,
+        frame_info, frame_member_info, idalib_define_stkvar, idalib_delete_stkvar,
+        idalib_get_frame_info, idalib_get_frame_member, idalib_set_stkvar_type, stkvar_result,
     };
 }
 
