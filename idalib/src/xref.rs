@@ -76,6 +76,7 @@ bitflags! {
         const ALL = XREF_ALL as _;
         const FAR = XREF_FAR as _;
         const DATA = XREF_DATA as _;
+        const TID = XREF_TID as _;
     }
 }
 

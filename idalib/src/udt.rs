@@ -1,6 +1,6 @@
 use crate::ffi::udt::{
-    idalib_get_ordinal_limit, idalib_get_udt_info, idalib_get_udt_member, udt_info,
-    udt_member_info,
+    idalib_get_ordinal_limit, idalib_get_udt_info, idalib_get_udt_member,
+    idalib_get_udt_member_tid, udt_info, udt_member_info,
 };
 use autocxx::c_uint;
 
@@ -54,4 +54,13 @@ pub fn get_udt_member(ordinal: u32, index: u32) -> Option<UdtMember> {
         size_bits: out.size_bits,
         is_bitfield: out.is_bitfield,
     })
+}
+
+pub fn get_udt_member_tid(ordinal: u32, index: u32) -> Option<u64> {
+    let mut tid = 0u64;
+    let ok = unsafe { idalib_get_udt_member_tid(c_uint(ordinal), c_uint(index), &mut tid) };
+    if !ok {
+        return None;
+    }
+    Some(tid)
 }

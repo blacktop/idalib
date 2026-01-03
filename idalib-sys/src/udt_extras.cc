@@ -52,3 +52,28 @@ bool idalib_get_udt_member(uint32 ordinal, uint32 index, udt_member_info &out) {
   out.is_bitfield = m.is_bitfield();
   return true;
 }
+
+bool idalib_get_udt_member_tid(uint32 ordinal, uint32 index, uint64_t &out_tid) {
+  tinfo_t tif;
+  if (!tif.get_numbered_type(nullptr, ordinal, BTF_TYPEDEF, true)) {
+    return false;
+  }
+  if (!(tif.is_struct() || tif.is_union())) {
+    return false;
+  }
+
+  udt_type_data_t udt;
+  if (!tif.get_udt_details(&udt, GTD_CALC_LAYOUT)) {
+    return false;
+  }
+  if (index >= udt.size()) {
+    return false;
+  }
+
+  tid_t tid = tif.get_udm_tid(index);
+  if (tid == BADADDR) {
+    return false;
+  }
+  out_tid = static_cast<uint64_t>(tid);
+  return true;
+}

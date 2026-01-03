@@ -596,6 +596,10 @@ impl IDB {
         udt::get_udt_member(ordinal, index)
     }
 
+    pub fn udt_member_tid(&self, ordinal: u32, index: u32) -> Option<u64> {
+        udt::get_udt_member_tid(ordinal, index)
+    }
+
     pub fn local_type_info(&self, ordinal: u32) -> Option<crate::types::LocalTypeInfo> {
         crate::types::get_local_type(ordinal)
     }

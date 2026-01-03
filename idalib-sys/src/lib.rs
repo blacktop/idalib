@@ -334,6 +334,7 @@ include_cpp! {
     generate!("XREF_ALL")
     generate!("XREF_FAR")
     generate!("XREF_DATA")
+    generate!("XREF_TID")
 
     generate!("cref_t")
     generate!("dref_t")
@@ -1161,6 +1162,11 @@ mod ffix {
             index: c_uint,
             out: &mut udt_member_info,
         ) -> bool;
+        unsafe fn idalib_get_udt_member_tid(
+            ordinal: c_uint,
+            index: c_uint,
+            out_tid: &mut u64,
+        ) -> bool;
     }
 }
 
@@ -1304,9 +1310,9 @@ pub mod util {
 
 pub mod xref {
     pub use super::ffi::{
-        XREF_ALL, XREF_BASE, XREF_DATA, XREF_FAR, XREF_MASK, XREF_PASTEND, XREF_TAIL, XREF_USER,
-        cref_t, dref_t, has_external_refs, xrefblk_t, xrefblk_t_first_from, xrefblk_t_first_to,
-        xrefblk_t_next_from, xrefblk_t_next_to,
+        XREF_ALL, XREF_BASE, XREF_DATA, XREF_FAR, XREF_MASK, XREF_PASTEND, XREF_TAIL, XREF_TID,
+        XREF_USER, cref_t, dref_t, has_external_refs, xrefblk_t, xrefblk_t_first_from,
+        xrefblk_t_first_to, xrefblk_t_next_from, xrefblk_t_next_to,
     };
 }
 
@@ -1367,8 +1373,8 @@ pub mod name {
 
 pub mod udt {
     pub use super::ffix::{
-        idalib_get_ordinal_limit, idalib_get_udt_info, idalib_get_udt_member, udt_info,
-        udt_member_info,
+        idalib_get_ordinal_limit, idalib_get_udt_info, idalib_get_udt_member,
+        idalib_get_udt_member_tid, udt_info, udt_member_info,
     };
 }
 
