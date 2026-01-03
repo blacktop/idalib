@@ -755,6 +755,35 @@ mod ffix {
         kind: String,
     }
 
+    #[derive(Debug, Clone, Default)]
+    struct frame_info {
+        frame_size: u64,
+        ret_size: i32,
+        frsize: u64,
+        frregs: u16,
+        argsize: u64,
+        fpd: u64,
+        args_start: u64,
+        args_end: u64,
+        retaddr_start: u64,
+        retaddr_end: u64,
+        savregs_start: u64,
+        savregs_end: u64,
+        locals_start: u64,
+        locals_end: u64,
+        member_count: u32,
+    }
+
+    #[derive(Debug, Clone, Default)]
+    struct frame_member_info {
+        name: String,
+        type_name: String,
+        offset_bits: u64,
+        size_bits: u64,
+        is_bitfield: bool,
+        part: String,
+    }
+
     unsafe extern "C++" {
         include!("autocxxgen_ffi.h");
         include!("idalib.hpp");
@@ -778,6 +807,7 @@ mod ffix {
         include!("lines_extras.h");
         include!("udt_extras.h");
         include!("types_extras.h");
+        include!("frame_extras.h");
 
         type c_short = autocxx::c_short;
         type c_int = autocxx::c_int;
@@ -821,6 +851,12 @@ mod ffix {
         unsafe fn idalib_load_dbg_dbginfo(path: *const c_char, verbose: bool) -> bool;
 
         unsafe fn idalib_get_local_type(ordinal: c_uint, out: &mut local_type_info) -> bool;
+        unsafe fn idalib_get_frame_info(ea: u64, out: &mut frame_info) -> bool;
+        unsafe fn idalib_get_frame_member(
+            ea: u64,
+            index: c_uint,
+            out: &mut frame_member_info,
+        ) -> bool;
 
         // NOTE: we can't use uval_t here due to it resolving to c_ulonglong,
         // which causes `verify_extern_type` to fail...
@@ -1338,6 +1374,12 @@ pub mod udt {
 
 pub mod types {
     pub use super::ffix::{idalib_get_local_type, local_type_info};
+}
+
+pub mod frame {
+    pub use super::ffix::{
+        frame_info, frame_member_info, idalib_get_frame_info, idalib_get_frame_member,
+    };
 }
 
 pub mod ida {

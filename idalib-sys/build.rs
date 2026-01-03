@@ -51,6 +51,7 @@ fn main() {
         .expect("parsed correctly");
     builder.file(ffi_path.join("udt_extras.cc"));
     builder.file(ffi_path.join("types_extras.cc"));
+    builder.file(ffi_path.join("frame_extras.cc"));
 
     #[cfg(target_os = "linux")]
     {

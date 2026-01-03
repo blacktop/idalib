@@ -600,6 +600,14 @@ impl IDB {
         crate::types::get_local_type(ordinal)
     }
 
+    pub fn frame_info(&self, ea: Address) -> Option<crate::frame::FrameInfo> {
+        crate::frame::get_frame_info(ea.into())
+    }
+
+    pub fn frame_member(&self, ea: Address, index: u32) -> Option<crate::frame::FrameMember> {
+        crate::frame::get_frame_member(ea.into(), index)
+    }
+
     pub fn address_to_string(&self, ea: Address) -> Option<String> {
         let s = unsafe { idalib_ea2str(ea.into()) };
 
