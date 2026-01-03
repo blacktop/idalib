@@ -50,6 +50,7 @@ fn main() {
         .build()
         .expect("parsed correctly");
     builder.file(ffi_path.join("udt_extras.cc"));
+    builder.file(ffi_path.join("types_extras.cc"));
 
     #[cfg(target_os = "linux")]
     {
@@ -65,7 +66,11 @@ fn main() {
     {
         let b = builder
             .cargo_warnings(false)
+            .warnings(false)
             .flag_if_supported("-std=c++17")
+            .flag_if_supported("-Wno-nullability-completeness")
+            .flag_if_supported("-Wno-nontrivial-memcall")
+            .flag_if_supported("-Wno-varargs")
             .define("__MACOS__", "1")
             .define("__EA64__", "1");
 

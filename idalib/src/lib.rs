@@ -89,6 +89,7 @@ pub mod plugin;
 pub mod processor;
 pub mod segment;
 pub mod strings;
+pub mod types;
 pub mod udt;
 pub mod xref;
 

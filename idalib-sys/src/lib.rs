@@ -616,6 +616,8 @@ pub mod idp {
     #![allow(unused)]
 
     include!(concat!(env!("OUT_DIR"), "/idp.rs"));
+
+    pub use super::ffix::idalib_assemble_line;
 }
 
 pub mod inf {
@@ -746,6 +748,13 @@ mod ffix {
         is_bitfield: bool,
     }
 
+    #[derive(Debug, Clone, Default)]
+    struct local_type_info {
+        name: String,
+        decl: String,
+        kind: String,
+    }
+
     unsafe extern "C++" {
         include!("autocxxgen_ffi.h");
         include!("idalib.hpp");
@@ -768,6 +777,7 @@ mod ffix {
         include!("strings_extras.h");
         include!("lines_extras.h");
         include!("udt_extras.h");
+        include!("types_extras.h");
 
         type c_short = autocxx::c_short;
         type c_int = autocxx::c_int;
@@ -809,6 +819,8 @@ mod ffix {
         unsafe fn idalib_check_license() -> bool;
         unsafe fn idalib_get_license_id(id: &mut [u8; 6]) -> bool;
         unsafe fn idalib_load_dbg_dbginfo(path: *const c_char, verbose: bool) -> bool;
+
+        unsafe fn idalib_get_local_type(ordinal: c_uint, out: &mut local_type_info) -> bool;
 
         // NOTE: we can't use uval_t here due to it resolving to c_ulonglong,
         // which causes `verify_extern_type` to fail...
@@ -1085,6 +1097,11 @@ mod ffix {
         unsafe fn idalib_get_qword(ea: c_ulonglong) -> u64;
         unsafe fn idalib_get_bytes(ea: c_ulonglong, buf: &mut Vec<u8>) -> Result<usize>;
         unsafe fn idalib_patch_bytes(ea: c_ulonglong, buf: &mut Vec<u8>) -> bool;
+        unsafe fn idalib_assemble_line(
+            ea: c_ulonglong,
+            line: *const c_char,
+            buf: &mut Vec<u8>,
+        ) -> Result<c_longlong>;
 
         unsafe fn idalib_get_input_file_path() -> String;
 
@@ -1241,6 +1258,7 @@ pub mod bytes {
     };
 }
 
+
 pub mod util {
     pub use super::ffi::{
         is_align_insn, is_basic_block_end, is_call_insn, is_indirect_jump_insn, is_ret_insn,
@@ -1316,6 +1334,10 @@ pub mod udt {
         idalib_get_ordinal_limit, idalib_get_udt_info, idalib_get_udt_member, udt_info,
         udt_member_info,
     };
+}
+
+pub mod types {
+    pub use super::ffix::{idalib_get_local_type, local_type_info};
 }
 
 pub mod ida {

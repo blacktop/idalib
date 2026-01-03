@@ -12,6 +12,7 @@ use crate::ffi::func::{
     get_func, get_func_qty, getn_func, idalib_get_func_cmt, idalib_set_func_cmt,
 };
 use crate::ffi::hexrays::{decompile_func, init_hexrays_plugin, term_hexrays_plugin};
+use crate::ffi::idp::idalib_assemble_line;
 use crate::ffi::ida::{
     auto_wait, close_database_with, make_signatures, open_database_quiet, set_screen_ea,
 };
@@ -492,6 +493,29 @@ impl IDB {
         }
     }
 
+    pub fn assemble_line(&self, ea: Address, line: impl AsRef<str>) -> Result<Vec<u8>, IDAError> {
+        let s = CString::new(line.as_ref()).map_err(IDAError::ffi)?;
+        let mut buf = Vec::with_capacity(64);
+        let len = unsafe { idalib_assemble_line(ea.into(), s.as_ptr(), &mut buf) }
+            .map_err(IDAError::ffi)?;
+        let len: i64 = len.into();
+        if len <= 0 {
+            return Err(IDAError::ffi_with(format!(
+                "failed to assemble line at {ea:#x}"
+            )));
+        }
+        let len = len as usize;
+        if len > buf.capacity() {
+            return Err(IDAError::ffi_with(format!(
+                "assembled length exceeds buffer at {ea:#x}"
+            )));
+        }
+        unsafe {
+            buf.set_len(len);
+        }
+        Ok(buf)
+    }
+
     pub fn load_debug_info(
         &self,
         path: impl AsRef<Path>,
@@ -570,6 +594,10 @@ impl IDB {
 
     pub fn udt_member(&self, ordinal: u32, index: u32) -> Option<UdtMember> {
         udt::get_udt_member(ordinal, index)
+    }
+
+    pub fn local_type_info(&self, ordinal: u32) -> Option<crate::types::LocalTypeInfo> {
+        crate::types::get_local_type(ordinal)
     }
 
     pub fn address_to_string(&self, ea: Address) -> Option<String> {
