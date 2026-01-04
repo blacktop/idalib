@@ -5,6 +5,7 @@ use bitflags::bitflags;
 
 use crate::Address;
 use crate::ffi::BADADDR;
+use crate::ffi::auto_analysis::*;
 use crate::ffi::inf::*;
 use crate::ffi::nalt::*;
 use crate::idb::IDB;
@@ -141,6 +142,14 @@ impl<'a> Metadata<'a> {
 
     pub fn is_auto_enabled(&self) -> bool {
         unsafe { idalib_inf_is_auto_enabled() }
+    }
+
+    pub fn auto_is_ok(&self) -> bool {
+        unsafe { idalib_auto_is_ok() }
+    }
+
+    pub fn auto_state(&self) -> i32 {
+        unsafe { idalib_get_auto_state() }
     }
 
     pub fn use_allasm(&self) -> bool {

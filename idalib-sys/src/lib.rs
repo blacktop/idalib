@@ -698,6 +698,12 @@ pub mod inf {
     };
 }
 
+pub mod auto_analysis {
+    #![allow(unused)]
+
+    pub use super::ffix::{idalib_auto_is_ok, idalib_get_auto_state};
+}
+
 pub mod pod {
     #![allow(non_camel_case_types)]
     #![allow(non_upper_case_globals)]
@@ -812,6 +818,7 @@ mod ffix {
         include!("idalib.hpp");
 
         include!("types.h");
+        include!("auto_extras.h");
         include!("bookmarks_extras.h");
         include!("bytes_extras.h");
         include!("comments_extras.h");
@@ -956,6 +963,9 @@ mod ffix {
             insn: *const cinsn_t,
             out: *mut addr_range,
         ) -> bool;
+
+        unsafe fn idalib_auto_is_ok() -> bool;
+        unsafe fn idalib_get_auto_state() -> c_int;
 
         unsafe fn idalib_inf_get_version() -> u16;
         unsafe fn idalib_inf_get_genflags() -> u16;
