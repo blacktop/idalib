@@ -149,7 +149,7 @@ impl<'a> Metadata<'a> {
     }
 
     pub fn auto_state(&self) -> i32 {
-        unsafe { idalib_get_auto_state() }
+        unsafe { idalib_get_auto_state().into() }
     }
 
     pub fn use_allasm(&self) -> bool {
