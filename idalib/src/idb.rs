@@ -632,11 +632,11 @@ impl IDB {
     }
 
     pub fn frame_info(&self, ea: Address) -> Option<crate::frame::FrameInfo> {
-        crate::frame::get_frame_info(ea.into())
+        crate::frame::get_frame_info(ea)
     }
 
     pub fn frame_member(&self, ea: Address, index: u32) -> Option<crate::frame::FrameMember> {
-        crate::frame::get_frame_member(ea.into(), index)
+        crate::frame::get_frame_member(ea, index)
     }
 
     pub fn define_stack_var(
@@ -647,7 +647,7 @@ impl IDB {
         decl: &str,
         relaxed: bool,
     ) -> crate::frame::StackVarResult {
-        crate::frame::define_stack_var(ea.into(), name, offset, decl, relaxed)
+        crate::frame::define_stack_var(ea, name, offset, decl, relaxed)
     }
 
     pub fn delete_stack_var(
@@ -657,9 +657,10 @@ impl IDB {
         offset: i64,
         use_offset: bool,
     ) -> crate::frame::StackVarResult {
-        crate::frame::delete_stack_var(ea.into(), name, offset, use_offset)
+        crate::frame::delete_stack_var(ea, name, offset, use_offset)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn set_stack_var_type(
         &self,
         ea: Address,
@@ -670,7 +671,7 @@ impl IDB {
         relaxed: bool,
         strict: bool,
     ) -> crate::frame::StackVarResult {
-        crate::frame::set_stack_var_type(ea.into(), name, offset, use_offset, decl, relaxed, strict)
+        crate::frame::set_stack_var_type(ea, name, offset, use_offset, decl, relaxed, strict)
     }
 
     pub fn address_to_string(&self, ea: Address) -> Option<String> {

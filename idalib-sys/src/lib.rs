@@ -902,6 +902,7 @@ mod ffix {
             use_offset: bool,
             out: &mut stkvar_result,
         ) -> bool;
+        #[allow(clippy::too_many_arguments)]
         unsafe fn idalib_set_stkvar_type(
             ea: u64,
             name: *const c_char,

@@ -43,7 +43,7 @@ pub struct StackVarResult {
 
 pub fn get_frame_info(ea: u64) -> Option<FrameInfo> {
     let mut out = frame_info::default();
-    let ok = unsafe { idalib_get_frame_info(ea.into(), &mut out) };
+    let ok = unsafe { idalib_get_frame_info(ea, &mut out) };
     if !ok {
         return None;
     }
@@ -68,7 +68,7 @@ pub fn get_frame_info(ea: u64) -> Option<FrameInfo> {
 
 pub fn get_frame_member(ea: u64, index: u32) -> Option<FrameMember> {
     let mut out = frame_member_info::default();
-    let ok = unsafe { idalib_get_frame_member(ea.into(), c_uint(index), &mut out) };
+    let ok = unsafe { idalib_get_frame_member(ea, c_uint(index), &mut out) };
     if !ok {
         return None;
     }
