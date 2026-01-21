@@ -1,6 +1,6 @@
 use crate::ffi::frame::{
-    frame_info, frame_member_info, idalib_define_stkvar, idalib_delete_stkvar, idalib_get_frame_info,
-    idalib_get_frame_member, idalib_set_stkvar_type, stkvar_result,
+    frame_info, frame_member_info, idalib_define_stkvar, idalib_delete_stkvar,
+    idalib_get_frame_info, idalib_get_frame_member, idalib_set_stkvar_type, stkvar_result,
 };
 use autocxx::c_uint;
 use std::ffi::CString;
@@ -95,7 +95,10 @@ pub fn define_stack_var(
     let _ = unsafe {
         idalib_define_stkvar(
             ea,
-            c_name.as_ref().map(|v| v.as_ptr()).unwrap_or(std::ptr::null()),
+            c_name
+                .as_ref()
+                .map(|v| v.as_ptr())
+                .unwrap_or(std::ptr::null()),
             offset,
             c_decl.as_ptr(),
             relaxed,
@@ -120,7 +123,10 @@ pub fn delete_stack_var(
     let _ = unsafe {
         idalib_delete_stkvar(
             ea,
-            c_name.as_ref().map(|v| v.as_ptr()).unwrap_or(std::ptr::null()),
+            c_name
+                .as_ref()
+                .map(|v| v.as_ptr())
+                .unwrap_or(std::ptr::null()),
             offset,
             use_offset,
             &mut out,
@@ -148,7 +154,10 @@ pub fn set_stack_var_type(
     let _ = unsafe {
         idalib_set_stkvar_type(
             ea,
-            c_name.as_ref().map(|v| v.as_ptr()).unwrap_or(std::ptr::null()),
+            c_name
+                .as_ref()
+                .map(|v| v.as_ptr())
+                .unwrap_or(std::ptr::null()),
             offset,
             use_offset,
             c_decl.as_ptr(),

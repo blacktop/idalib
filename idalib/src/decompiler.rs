@@ -86,13 +86,8 @@ impl<'a> CInsn<'a> {
     /// Get the address range covered by this statement.
     pub fn bounds(&self) -> Option<AddressRange> {
         let mut out = addr_range { start: 0, end: 0 };
-        let ok =
-            unsafe { idalib_hexrays_cfunc_get_stmt_bounds(self.func_ptr, self.ptr, &mut out) };
-        if ok {
-            Some(out.into())
-        } else {
-            None
-        }
+        let ok = unsafe { idalib_hexrays_cfunc_get_stmt_bounds(self.func_ptr, self.ptr, &mut out) };
+        if ok { Some(out.into()) } else { None }
     }
 }
 

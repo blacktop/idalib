@@ -12,10 +12,10 @@ use crate::ffi::func::{
     get_func, get_func_qty, getn_func, idalib_get_func_cmt, idalib_set_func_cmt,
 };
 use crate::ffi::hexrays::{decompile_func, init_hexrays_plugin, term_hexrays_plugin};
-use crate::ffi::idp::idalib_assemble_line;
 use crate::ffi::ida::{
     auto_wait, close_database_with, make_signatures, open_database_quiet, set_screen_ea,
 };
+use crate::ffi::idp::idalib_assemble_line;
 use crate::ffi::insn::decode;
 use crate::ffi::lines::idalib_generate_disasm_line;
 use crate::ffi::loader::find_plugin;
@@ -39,6 +39,8 @@ use crate::strings::StringList;
 use crate::udt::{self, UdtInfo, UdtMember};
 use crate::xref::{XRef, XRefQuery};
 use crate::{Address, AddressFlags, IDAError, IDARuntimeHandle, prepare_library};
+
+const ASSEMBLE_LINE_BUF_CAP: usize = 1024; // IDA SDK MAXSTR (pro.h)
 
 pub struct IDB {
     path: PathBuf,
@@ -476,9 +478,7 @@ impl IDB {
         if unsafe { set_name(ea.into(), s.as_ptr(), autocxx::c_int(flags)) } {
             Ok(())
         } else {
-            Err(IDAError::ffi_with(format!(
-                "failed to set name at {ea:#x}"
-            )))
+            Err(IDAError::ffi_with(format!("failed to set name at {ea:#x}")))
         }
     }
 
@@ -495,7 +495,7 @@ impl IDB {
 
     pub fn assemble_line(&self, ea: Address, line: impl AsRef<str>) -> Result<Vec<u8>, IDAError> {
         let s = CString::new(line.as_ref()).map_err(IDAError::ffi)?;
-        let mut buf = Vec::with_capacity(64);
+        let mut buf = Vec::with_capacity(ASSEMBLE_LINE_BUF_CAP);
         let len = unsafe { idalib_assemble_line(ea.into(), s.as_ptr(), &mut buf) }
             .map_err(IDAError::ffi)?;
         let len: i64 = len.into();
@@ -516,11 +516,7 @@ impl IDB {
         Ok(buf)
     }
 
-    pub fn load_debug_info(
-        &self,
-        path: impl AsRef<Path>,
-        verbose: bool,
-    ) -> Result<bool, IDAError> {
+    pub fn load_debug_info(&self, path: impl AsRef<Path>, verbose: bool) -> Result<bool, IDAError> {
         crate::ffi::ida::load_dbg_dbginfo(path, verbose)
     }
 
@@ -604,7 +600,12 @@ impl IDB {
         crate::types::get_local_type(ordinal)
     }
 
-    pub fn declare_type(&self, decl: &str, relaxed: bool, replace: bool) -> crate::types::DeclaredType {
+    pub fn declare_type(
+        &self,
+        decl: &str,
+        relaxed: bool,
+        replace: bool,
+    ) -> crate::types::DeclaredType {
         crate::types::declare_type(decl, relaxed, replace)
     }
 

@@ -53,8 +53,10 @@ long long idalib_assemble_line(ea_t ea, const char *line,
     use32 = inf_is_32bit_exactly();
   }
 
+  constexpr size_t kAssembleBufSize = MAXSTR;
+  out.reserve(kAssembleBufSize);
   const size_t cap = out.capacity();
-  if (cap == 0) {
+  if (cap < kAssembleBufSize) {
     return -1;
   }
   auto try_assemble = [&](ea_t cs_val, bool use32_val) -> long long {

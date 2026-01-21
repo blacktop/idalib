@@ -1376,7 +1376,6 @@ pub mod bytes {
     };
 }
 
-
 pub mod util {
     pub use super::ffi::{
         is_align_insn, is_basic_block_end, is_call_insn, is_indirect_jump_insn, is_ret_insn,
@@ -1456,9 +1455,9 @@ pub mod udt {
 
 pub mod types {
     pub use super::ffix::{
-        idalib_apply_decl_type, idalib_apply_named_type, idalib_declare_type,
-        idalib_declare_types, idalib_get_local_type, idalib_guess_tinfo, local_type_info,
-        type_decl_result, type_guess_result,
+        idalib_apply_decl_type, idalib_apply_named_type, idalib_declare_type, idalib_declare_types,
+        idalib_get_local_type, idalib_guess_tinfo, local_type_info, type_decl_result,
+        type_guess_result,
     };
 }
 
