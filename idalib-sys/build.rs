@@ -97,8 +97,11 @@ fn main() {
             .cargo_warnings(false)
             .warnings(false)
             .extra_warnings(false)
-            .flag("-w") // Suppress all warnings
             .flag_if_supported("-std=c++17")
+            .flag_if_supported("-Wno-nullability-completeness")
+            .flag_if_supported("-Wno-nontrivial-memcall")
+            .flag_if_supported("-Wno-varargs")
+            .flag_if_supported("-fpermissive") // Allow non-conforming code
             .define("__LINUX__", "1")
             .define("__EA64__", "1")
             .compile("libida-stubs");
