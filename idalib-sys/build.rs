@@ -206,6 +206,8 @@ fn main() {
         // Block iterator types that conflict across multiple template instantiations in IDA 9.3
         .blocklist_type("iterator")
         .blocklist_type("const_iterator")
+        .blocklist_type(".*_iterator")
+        .blocklist_type(".*_const_iterator")
         .allowlist_item("cfunc_t")
         .allowlist_item("citem_t")
         .allowlist_item("cexpr_t")
