@@ -1,9 +1,9 @@
 [package]
 name = "idalib-build"
-authors = ["Sam L. Thomas <sam@binarly.io>", "Yegor Vasilenko <yegor@binarly.io>", "Marco Ivaldi <raptor@0xdeadbeef.info>"]
+authors = ["Sam L. Thomas <st@xv.ax>", "Yegor Vasilenko <yv@yegor.cc>", "Marco Ivaldi <raptor@0xdeadbeef.info>"]
 version = "0.7.2+9.2.250908"
 description = "Idiomatic bindings to IDA SDK"
-repository = "https://github.com/binarly-io/idalib"
+repository = "https://github.com/idalib-rs/idalib"
 documentation = "https://idalib.rs/idalib_build"
 homepage = "https://idalib.rs"
 keywords = ["reverse-engineering", "ida", "ida-pro", "idalib"]

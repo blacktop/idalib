@@ -10,7 +10,7 @@
     "license": "MIT OR Apache-2.0",
     "version": "0.7.2",
     "urls": {
-      "repository": "https://github.com/binarly-io/idalib",
+      "repository": "https://github.com/idalib-rs/idalib",
       "documentation": "https://idalib.rs"
     },
     "authors": [{

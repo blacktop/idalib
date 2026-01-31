@@ -2,7 +2,7 @@
 
 [![crates.io](https://img.shields.io/crates/v/idalib)](https://crates.io/crates/idalib)
 [![documentation](https://img.shields.io/badge/documentation-0.7.2%2B9.2.250908-blue?link=https%3A%2F%2Fidalib.rs%2Fidalib)](https://idalib.rs/idalib/)
-[![license](https://img.shields.io/crates/l/idalib)](https://github.com/binarly-io/idalib)
+[![license](https://img.shields.io/crates/l/idalib)](https://github.com/idalib-rs/idalib)
 [![crates.io downloads](https://img.shields.io/crates/d/idalib)](https://crates.io/crates/idalib)
 
 Idiomatic Rust bindings for the IDA SDK, enabling the development of standalone
@@ -133,7 +133,7 @@ available to the dynamic linker at runtime, e.g., via `LD_LIBRARY_PATH` or
 `/etc/ld.so.conf{,.d}`. Note that using the stub libraries provided by the SDK,
 e.g., those located at `$IDASDK/lib/...` as opposed to the
 libraries in the IDA installation directory will result in
-[crashes](https://github.com/binarly-io/idalib/issues/24).
+[crashes](https://github.com/idalib-rs/idalib/issues/24).
 
 For users wanting to use the `build.rs` from `idalib/examples`, e.g., so builds
 succeed via GitHub Actions without an IDA installation, we recommend using the
@@ -180,5 +180,12 @@ git submodule update --init --recursive
 
 ## Contributors
 
-Please see [CONTRIBUTORS.md](https://github.com/binarly-io/idalib/blob/master/CONTRIBUTORS.md) for a full list of
+Please see [CONTRIBUTORS.md](https://github.com/idalib-rs/idalib/blob/master/CONTRIBUTORS.md) for a full list of
 acknowledgments.
+
+## Acknowledgments
+
+This project's development has been supported by the following organisations:
+
+- [Binarly](https://binarly.io)
+- [Hex-Rays](https://hex-rays.com) via their [contributor program](https://hex-rays.com/contributor-program)
