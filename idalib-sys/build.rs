@@ -3,21 +3,64 @@ use std::path::{Path, PathBuf};
 
 use autocxx_bindgen::Builder as BindgenBuilder;
 
+/// Get the target OS from Cargo's environment (supports cross-compilation)
+fn target_os() -> String {
+    env::var("CARGO_CFG_TARGET_OS").unwrap_or_else(|_| {
+        if cfg!(target_os = "linux") {
+            "linux".to_string()
+        } else if cfg!(target_os = "macos") {
+            "macos".to_string()
+        } else if cfg!(target_os = "windows") {
+            "windows".to_string()
+        } else {
+            panic!("unsupported host platform")
+        }
+    })
+}
+
+/// Get the target arch from Cargo's environment (supports cross-compilation)
+fn target_arch() -> String {
+    env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_else(|_| {
+        if cfg!(target_arch = "x86_64") {
+            "x86_64".to_string()
+        } else if cfg!(target_arch = "aarch64") {
+            "aarch64".to_string()
+        } else {
+            panic!("unsupported host architecture")
+        }
+    })
+}
+
+/// Get platform-specific clang args for the target
+fn platform_clang_args() -> Vec<&'static str> {
+    let os = target_os();
+    let arch = target_arch();
+
+    if os == "linux" {
+        vec!["-std=c++17", "-w", "-D__LINUX__=1", "-D__EA64__=1"]
+    } else if os == "macos" && arch == "aarch64" {
+        vec!["-std=c++17", "-D__MACOS__=1", "-D__ARM__=1", "-D__EA64__=1"]
+    } else if os == "macos" {
+        vec!["-std=c++17", "-D__MACOS__=1", "-D__EA64__=1"]
+    } else if os == "windows" {
+        vec!["-std=c++17", "-D__NT__=1", "-D__EA64__=1"]
+    } else {
+        panic!("unsupported platform: {}", os)
+    }
+}
+
 fn configure_and_generate(builder: BindgenBuilder, ida: &Path, output: impl AsRef<Path>) {
     let rs = PathBuf::from(env::var("OUT_DIR").unwrap()).join(output.as_ref());
-    let bindings = builder
+
+    let mut builder = builder
         .clang_arg("-xc++")
-        .clang_arg(format!("-I{}", ida.display()))
-        .clang_args(
-            #[cfg(target_os = "linux")]
-            &["-std=c++17", "-D__LINUX__=1", "-D__EA64__=1"],
-            #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-            &["-std=c++17", "-D__MACOS__=1", "-D__ARM__=1", "-D__EA64__=1"],
-            #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-            &["-std=c++17", "-D__MACOS__=1", "-D__EA64__=1"],
-            #[cfg(target_os = "windows")]
-            &["-std=c++17", "-D__NT__=1", "-D__EA64__=1"],
-        )
+        .clang_arg(format!("-I{}", ida.display()));
+
+    for arg in platform_clang_args() {
+        builder = builder.clang_arg(arg);
+    }
+
+    let bindings = builder
         .respect_cxx_access_specs(true)
         .generate()
         .expect("generate bindings");
@@ -26,7 +69,6 @@ fn configure_and_generate(builder: BindgenBuilder, ida: &Path, output: impl AsRe
 }
 
 fn main() {
-    // let sdk_path = PathBuf::from(env::var("IDASDKDIR").expect("IDASDKDIR should be set"));
     let sdk_path =
         PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should be set"))
             .join("sdk/src");
@@ -36,57 +78,57 @@ fn main() {
 
     let ffi_path = Path::new("src");
 
+    let clang_args = platform_clang_args();
+
     let mut builder = autocxx_build::Builder::new(ffi_path.join("lib.rs"), [ffi_path, &*ida])
-        .extra_clang_args(
-            #[cfg(target_os = "linux")]
-            &["-std=c++17", "-D__LINUX__=1", "-D__EA64__=1"],
-            #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-            &["-std=c++17", "-D__MACOS__=1", "-D__ARM__=1", "-D__EA64__=1"],
-            #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-            &["-std=c++17", "-D__MACOS__=1", "-D__EA64__=1"],
-            #[cfg(target_os = "windows")]
-            &["-std=c++17", "-D__NT__=1", "-D__EA64__=1"],
-        )
+        .extra_clang_args(&clang_args)
         .build()
         .expect("parsed correctly");
+
     builder.file(ffi_path.join("udt_extras.cc"));
     builder.file(ffi_path.join("types_extras.cc"));
     builder.file(ffi_path.join("frame_extras.cc"));
 
-    #[cfg(target_os = "linux")]
-    {
+    let os = target_os();
+    let arch = target_arch();
+
+    if os == "linux" {
         builder
             .cargo_warnings(false)
+            .warnings(false)
+            .extra_warnings(false)
+            .flag("-w") // Suppress all warnings
             .flag_if_supported("-std=c++17")
             .define("__LINUX__", "1")
             .define("__EA64__", "1")
             .compile("libida-stubs");
-    }
+    } else if os == "macos" {
+        let mut b = builder;
+        b.cargo_warnings(false);
+        b.warnings(false);
+        b.flag_if_supported("-std=c++17");
+        b.flag_if_supported("-Wno-nullability-completeness");
+        b.flag_if_supported("-Wno-nontrivial-memcall");
+        b.flag_if_supported("-Wno-varargs");
+        b.define("__MACOS__", "1");
+        b.define("__EA64__", "1");
 
-    #[cfg(target_os = "macos")]
-    {
-        let b = builder
-            .cargo_warnings(false)
-            .warnings(false)
-            .flag_if_supported("-std=c++17")
-            .flag_if_supported("-Wno-nullability-completeness")
-            .flag_if_supported("-Wno-nontrivial-memcall")
-            .flag_if_supported("-Wno-varargs")
-            .define("__MACOS__", "1")
-            .define("__EA64__", "1");
-
-        #[cfg(target_arch = "aarch64")]
-        let b = b.define("__ARM__", "1");
+        if arch == "aarch64" {
+            b.define("__ARM__", "1");
+        }
 
         b.compile("libida-stubs");
-    }
-
-    #[cfg(target_os = "windows")]
-    {
+    } else if os == "windows" {
+        // Note: MSVC linker may report LNK2005 duplicate symbol errors due to
+        // cxx-generated wrappers conflicting with manual implementations.
+        // This is worked around with /FORCE:MULTIPLE linker flag.
+        println!("cargo::rustc-link-arg=/FORCE:MULTIPLE");
         builder
             .cargo_warnings(false)
+            .warnings(false)
             .cpp(true)
             .std("c++17")
+            .flag("/w") // Suppress all warnings on MSVC
             .define("__NT__", "1")
             .define("__EA64__", "1")
             .compile("libida-stubs");

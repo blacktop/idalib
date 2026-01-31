@@ -1,15 +1,47 @@
 use std::env;
 use std::path::{Path, PathBuf};
 
+/// Get the target OS from Cargo's environment (supports cross-compilation)
+fn target_os() -> String {
+    env::var("CARGO_CFG_TARGET_OS").unwrap_or_else(|_| {
+        // Fallback to host OS if not cross-compiling
+        if cfg!(target_os = "linux") {
+            "linux".to_string()
+        } else if cfg!(target_os = "macos") {
+            "macos".to_string()
+        } else if cfg!(target_os = "windows") {
+            "windows".to_string()
+        } else {
+            panic!("unsupported host platform")
+        }
+    })
+}
+
+/// Get the target arch from Cargo's environment (supports cross-compilation)
+fn target_arch() -> String {
+    env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_else(|_| {
+        // Fallback to host arch if not cross-compiling
+        if cfg!(target_arch = "x86_64") {
+            "x86_64".to_string()
+        } else if cfg!(target_arch = "aarch64") {
+            "aarch64".to_string()
+        } else {
+            panic!("unsupported host architecture")
+        }
+    })
+}
+
 fn link_path() -> PathBuf {
-    #[cfg(target_os = "macos")]
-    return PathBuf::from("/Applications/IDA Professional 9.2.app/Contents/MacOS");
-
-    #[cfg(target_os = "linux")]
-    return PathBuf::from(env::var("HOME").unwrap()).join("ida-pro-9.2");
-
-    #[cfg(target_os = "windows")]
-    return PathBuf::from("C:\\Program Files\\IDA Professional 9.2");
+    let os = target_os();
+    if os == "macos" {
+        PathBuf::from("/Applications/IDA Professional 9.2.app/Contents/MacOS")
+    } else if os == "linux" {
+        PathBuf::from(env::var("HOME").unwrap()).join("ida-pro-9.2")
+    } else if os == "windows" {
+        PathBuf::from("C:\\Program Files\\IDA Professional 9.2")
+    } else {
+        panic!("unsupported platform: {}", os)
+    }
 }
 
 pub fn idalib_sdk_paths() -> (PathBuf, PathBuf, PathBuf, PathBuf) {
@@ -24,13 +56,16 @@ pub fn idalib_sdk_paths_with(check: bool) -> (PathBuf, PathBuf, PathBuf, PathBuf
         panic!("`{}` does not exist; SDK is not usable", pro_h.display());
     }
 
-    let (stubs_path, idalib, ida) = if cfg!(target_os = "linux") {
+    let os = target_os();
+    let arch = target_arch();
+
+    let (stubs_path, idalib, ida) = if os == "linux" {
         let path = sdk_path.join("lib/x64_linux_gcc_64");
         let idalib = path.join("libidalib.so");
         let ida = path.join("libida.so");
         (path, idalib, ida)
-    } else if cfg!(target_os = "macos") {
-        let path = if cfg!(target_arch = "x86_64") {
+    } else if os == "macos" {
+        let path = if arch == "x86_64" {
             sdk_path.join("lib/x64_mac_clang_64")
         } else {
             sdk_path.join("lib/arm64_mac_clang_64")
@@ -38,13 +73,13 @@ pub fn idalib_sdk_paths_with(check: bool) -> (PathBuf, PathBuf, PathBuf, PathBuf
         let idalib = path.join("libidalib.dylib");
         let ida = path.join("libida.dylib");
         (path, idalib, ida)
-    } else if cfg!(target_os = "windows") {
-        let path = sdk_path.join("lib\\x64_win_vc_64");
+    } else if os == "windows" {
+        let path = sdk_path.join("lib/x64_win_vc_64");
         let idalib = path.join("idalib.lib");
         let ida = path.join("ida.lib");
         (path, idalib, ida)
     } else {
-        panic!("unsupported platform");
+        panic!("unsupported platform: {}", os);
     };
 
     (sdk_path, stubs_path, idalib, ida)
@@ -56,18 +91,23 @@ pub fn idalib_install_paths() -> (PathBuf, PathBuf, PathBuf) {
 
 pub fn idalib_install_paths_with(check: bool) -> (PathBuf, PathBuf, PathBuf) {
     let path = env::var("IDADIR").map_or_else(|_| link_path(), PathBuf::from);
+    let os = target_os();
 
-    let (idalib, ida) = if cfg!(target_os = "linux") {
+    let (idalib, ida) = if os == "linux" {
         (path.join("libidalib.so"), path.join("libida.so"))
-    } else if cfg!(target_os = "macos") {
+    } else if os == "macos" {
         (path.join("libidalib.dylib"), path.join("libida.dylib"))
-    } else if cfg!(target_os = "windows") {
+    } else if os == "windows" {
         (path.join("idalib.dll"), path.join("ida.dll"))
     } else {
-        panic!("unsupported platform")
+        panic!("unsupported platform: {}", os)
     };
 
-    if check && !idalib.exists() {
+    // Skip existence check when cross-compiling (the libs won't exist on the host)
+    let is_cross_compiling = env::var("CARGO_CFG_TARGET_OS").is_ok()
+        && env::var("CARGO_CFG_TARGET_OS").unwrap() != std::env::consts::OS;
+
+    if check && !is_cross_compiling && !idalib.exists() {
         panic!(
             "`{}` does not exist; cannot find a compatible IDA Pro installation",
             idalib.display()
@@ -87,8 +127,9 @@ pub fn idalib_library_paths_with(check: bool) -> (PathBuf, PathBuf) {
 }
 
 fn configure_linkage_aux(path: &Path) {
+    let os = target_os();
     println!("cargo::rustc-link-search=native={}", path.display());
-    if cfg!(target_os = "windows") {
+    if os == "windows" {
         // .lib
         println!("cargo::rustc-link-lib=static=ida");
         println!("cargo::rustc-link-lib=static=idalib");
@@ -108,7 +149,7 @@ pub fn configure_idasdk_linkage() {
     let (_, stubs_path, _, _) = idalib_sdk_paths();
     configure_linkage_aux(&stubs_path);
 
-    if cfg!(target_os = "windows") {
+    if target_os() == "windows" {
         // FIXME: this seems to be required otherwise we report missing symbols and bail during
         // linking (seems to be due to autocxx)...
         println!("cargo::rustc-link-arg=/FORCE:UNRESOLVED");
@@ -116,43 +157,38 @@ pub fn configure_idasdk_linkage() {
 }
 
 pub fn configure_linkage() -> anyhow::Result<()> {
-    if cfg!(target_os = "windows") {
+    let os = target_os();
+
+    if os == "windows" {
         configure_idasdk_linkage();
         return Ok(());
     }
 
-    #[cfg(not(target_os = "windows"))]
-    {
-        let (install_path, _, _) = idalib_install_paths();
-        let (_, stub_path, _, _) = idalib_sdk_paths();
+    let (install_path, _, _) = idalib_install_paths_with(false);
+    let (_, stub_path, _, _) = idalib_sdk_paths();
 
-        #[cfg(target_os = "linux")]
-        {
-            println!(
-                "cargo::rustc-link-arg=-Wl,-rpath,{},-L{},-l:libida.so",
-                install_path.display(),
-                stub_path.display(),
-            );
-            println!(
-                "cargo::rustc-link-arg=-Wl,-rpath,{},-L{},-l:libidalib.so",
-                install_path.display(),
-                stub_path.display(),
-            );
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            println!(
-                "cargo::rustc-link-arg=-Wl,-rpath,{},-L{},-lida",
-                install_path.display(),
-                stub_path.display(),
-            );
-            println!(
-                "cargo::rustc-link-arg=-Wl,-rpath,{},-L{},-lidalib",
-                install_path.display(),
-                stub_path.display(),
-            );
-        }
+    if os == "linux" {
+        println!(
+            "cargo::rustc-link-arg=-Wl,-rpath,{},-L{},-l:libida.so",
+            install_path.display(),
+            stub_path.display(),
+        );
+        println!(
+            "cargo::rustc-link-arg=-Wl,-rpath,{},-L{},-l:libidalib.so",
+            install_path.display(),
+            stub_path.display(),
+        );
+    } else if os == "macos" {
+        println!(
+            "cargo::rustc-link-arg=-Wl,-rpath,{},-L{},-lida",
+            install_path.display(),
+            stub_path.display(),
+        );
+        println!(
+            "cargo::rustc-link-arg=-Wl,-rpath,{},-L{},-lidalib",
+            install_path.display(),
+            stub_path.display(),
+        );
     }
 
     Ok(())
