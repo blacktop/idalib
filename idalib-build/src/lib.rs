@@ -34,11 +34,11 @@ fn target_arch() -> String {
 fn link_path() -> PathBuf {
     let os = target_os();
     if os == "macos" {
-        PathBuf::from("/Applications/IDA Professional 9.2.app/Contents/MacOS")
+        PathBuf::from("/Applications/IDA Professional 9.3.app/Contents/MacOS")
     } else if os == "linux" {
-        PathBuf::from(env::var("HOME").unwrap()).join("ida-pro-9.2")
+        PathBuf::from(env::var("HOME").unwrap()).join("ida-pro-9.3")
     } else if os == "windows" {
-        PathBuf::from("C:\\Program Files\\IDA Professional 9.2")
+        PathBuf::from("C:\\Program Files\\IDA Professional 9.3")
     } else {
         panic!("unsupported platform: {}", os)
     }
