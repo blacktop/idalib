@@ -54,6 +54,7 @@ pub struct IDB {
 pub struct IDBOpenOptions {
     idb: Option<PathBuf>,
     ftype: Option<String>,
+    extra_args: Vec<String>,
 
     save: bool,
     auto_analyse: bool,
@@ -64,6 +65,7 @@ impl Default for IDBOpenOptions {
         Self {
             idb: None,
             ftype: None,
+            extra_args: Vec::new(),
             save: false,
             auto_analyse: true,
         }
@@ -95,6 +97,15 @@ impl IDBOpenOptions {
         self
     }
 
+    /// Add an extra CLI argument passed to `init_database`.
+    ///
+    /// Use this for flags not covered by the typed builder methods,
+    /// e.g. `-S"/path/to/script.py"` for an IDAPython startup script.
+    pub fn arg(&mut self, arg: impl Into<String>) -> &mut Self {
+        self.extra_args.push(arg.into());
+        self
+    }
+
     pub fn open(&self, path: impl AsRef<Path>) -> Result<IDB, IDAError> {
         let mut args = Vec::new();
 
@@ -106,6 +117,8 @@ impl IDBOpenOptions {
             args.push("-c".to_owned());
             args.push(format!("-o{}", idb_path.display()));
         }
+
+        args.extend(self.extra_args.iter().cloned());
 
         IDB::open_full_with(path, self.auto_analyse, self.save, &args)
     }
@@ -743,6 +756,10 @@ impl IDB {
 
     pub fn load_plugin(&self, name: impl AsRef<str>) -> Result<Plugin<'_>, IDAError> {
         self.find_plugin(name, true)
+    }
+
+    pub fn run_python(&self, code: &str) -> Result<crate::script::ScriptOutput, IDAError> {
+        crate::script::run_python(code)
     }
 }
 

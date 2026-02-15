@@ -813,6 +813,14 @@ mod ffix {
         offset: i64,
     }
 
+    #[derive(Debug, Clone, Default)]
+    struct script_result {
+        success: bool,
+        stdout_text: String,
+        stderr_text: String,
+        error: String,
+    }
+
     unsafe extern "C++" {
         include!("autocxxgen_ffi.h");
         include!("idalib.hpp");
@@ -838,6 +846,7 @@ mod ffix {
         include!("udt_extras.h");
         include!("types_extras.h");
         include!("frame_extras.h");
+        include!("expr_extras.h");
 
         type c_short = autocxx::c_short;
         type c_int = autocxx::c_int;
@@ -1243,6 +1252,9 @@ mod ffix {
         ) -> bool;
         unsafe fn idalib_apply_named_type(ea: u64, name: *const c_char) -> bool;
         unsafe fn idalib_guess_tinfo(id: u64, out: &mut type_guess_result) -> bool;
+
+        // scripting
+        unsafe fn idalib_run_python_snippet(code: &str, out: &mut script_result) -> bool;
     }
 }
 
@@ -1466,6 +1478,10 @@ pub mod frame {
         frame_info, frame_member_info, idalib_define_stkvar, idalib_delete_stkvar,
         idalib_get_frame_info, idalib_get_frame_member, idalib_set_stkvar_type, stkvar_result,
     };
+}
+
+pub mod script {
+    pub use super::ffix::{idalib_run_python_snippet, script_result};
 }
 
 pub mod ida {
