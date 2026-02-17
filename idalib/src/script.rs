@@ -31,8 +31,11 @@ impl ScriptOutput {
 /// the Python extlang is not available (plugin not loaded).
 ///
 /// Must be called from the main thread (IDA requirement).
-pub fn run_python(code: &str) -> Result<ScriptOutput, IDAError> {
-    let _guard = crate::prepare_library();
+///
+/// Note: does NOT call `prepare_library()` because the caller
+/// (`IDB::run_python`) already holds the runtime mutex via `IDB._guard`.
+/// Calling `prepare_library()` here would deadlock.
+pub(crate) fn run_python(code: &str) -> Result<ScriptOutput, IDAError> {
     let mut out = idalib_sys::script::script_result::default();
     let available = unsafe { idalib_sys::script::idalib_run_python_snippet(code, &mut out) };
     if !available {
