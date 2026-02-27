@@ -797,6 +797,7 @@ impl<'a> Iterator for EntryPointIter<'a> {
             return self.next();
         }
 
+        self.index += 1;
         Some(addr.into())
     }
 
