@@ -1,9 +1,11 @@
+use std::ffi::CString;
+
+use autocxx::c_uint;
+
 use crate::ffi::frame::{
     frame_info, frame_member_info, idalib_define_stkvar, idalib_delete_stkvar,
     idalib_get_frame_info, idalib_get_frame_member, idalib_set_stkvar_type, stkvar_result,
 };
-use autocxx::c_uint;
-use std::ffi::CString;
 
 #[derive(Debug, Clone)]
 pub struct FrameInfo {

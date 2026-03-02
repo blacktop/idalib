@@ -1,8 +1,9 @@
+use autocxx::c_uint;
+
 use crate::ffi::udt::{
     idalib_get_ordinal_limit, idalib_get_udt_info, idalib_get_udt_member,
     idalib_get_udt_member_tid, udt_info, udt_member_info,
 };
-use autocxx::c_uint;
 
 #[derive(Debug, Clone)]
 pub struct UdtInfo {

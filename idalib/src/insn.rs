@@ -2,13 +2,11 @@ use std::mem;
 
 use bitflags::bitflags;
 
+use crate::Address;
 use crate::ffi::insn::insn_t;
 use crate::ffi::insn::op::*;
-use crate::ffi::util::{is_basic_block_end, is_call_insn, is_indirect_jump_insn, is_ret_insn};
-
 pub use crate::ffi::insn::{arm, mips, x86};
-
-use crate::Address;
+use crate::ffi::util::{is_basic_block_end, is_call_insn, is_indirect_jump_insn, is_ret_insn};
 
 pub type Register = u16;
 pub type Phrase = u16;
@@ -96,7 +94,7 @@ impl Insn {
     }
 
     pub fn address(&self) -> Address {
-        self.inner.ea
+        self.inner.ea.into()
     }
 
     pub fn itype(&self) -> InsnType {

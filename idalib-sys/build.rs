@@ -83,7 +83,7 @@ fn main() {
     let mut builder = autocxx_build::Builder::new(ffi_path.join("lib.rs"), [ffi_path, &*ida])
         .extra_clang_args(&clang_args)
         .build()
-        .expect("parsed correctly");
+        .unwrap_or_else(|error| panic!("autocxx parse failed: {error:#?}"));
 
     builder.file(ffi_path.join("udt_extras.cc"));
     builder.file(ffi_path.join("types_extras.cc"));
@@ -141,7 +141,6 @@ fn main() {
     let pod = autocxx_bindgen::builder()
         .header(ida.join("pro.h").to_str().expect("path is valid string"))
         .header(ida.join("ua.hpp").to_str().expect("path is valid string"))
-        .allowlist_type("insn_t")
         .allowlist_type("op_t")
         .allowlist_type("optype_t")
         .allowlist_item("OF_.*")
@@ -197,6 +196,12 @@ fn main() {
     }
 
     let hexrays = autocxx_bindgen::builder()
+        .header(
+            ffi_path
+                .join("fixups.h")
+                .to_str()
+                .expect("path is valid string"),
+        )
         .header(ida.join("pro.h").to_str().expect("path is valid string"))
         .header(
             ida.join("hexrays.hpp")
