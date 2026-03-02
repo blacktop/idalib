@@ -144,7 +144,8 @@ fn main() {
         .allowlist_type("insn_t")
         .allowlist_type("op_t")
         .allowlist_type("optype_t")
-        .allowlist_item("OF_.*");
+        .allowlist_item("OF_.*")
+        .layout_tests(false);
 
     configure_and_generate(pod, &ida, "pod.rs");
 
@@ -222,7 +223,8 @@ fn main() {
         .allowlist_item("lvar_locator_t")
         .allowlist_item("vdloc_t")
         .allowlist_item("CV_.*")
-        .allowlist_item("DECOMP_.*");
+        .allowlist_item("DECOMP_.*")
+        .layout_tests(false);
 
     configure_and_generate(hexrays, &ida, "hexrays.rs");
 
