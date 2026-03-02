@@ -124,6 +124,13 @@ impl<'a> AddressFlags<'a> {
     }
 }
 
+/// Compile-time IDA SDK version this crate was built against.
+///
+/// Derived from `IDA_SDK_VERSION` in `pro.h` (e.g. 930 → major 9, minor 3).
+/// Compare with [`version()`] at runtime to detect mismatches before they
+/// cause undefined behavior.
+pub const SDK_VERSION: (i32, i32) = (9, 3);
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct IDAVersion {
     major: i32,
@@ -142,6 +149,12 @@ impl IDAVersion {
 
     pub fn build(&self) -> i32 {
         self.build
+    }
+}
+
+impl std::fmt::Display for IDAVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}.{}.{}", self.major, self.minor, self.build)
     }
 }
 
