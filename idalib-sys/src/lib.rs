@@ -152,7 +152,8 @@ include_cpp! {
     // gdl
     generate!("qbasic_block_t")
     generate!("qflow_chart_t")
-    generate!("gdl_graph_t")
+    // gdl_graph_t is abstract (pure virtual methods); skip value generation
+    block!("gdl_graph_t")
     generate_pod!("fc_block_type_t")
 
     generate!("FC_PRINT")
@@ -1329,7 +1330,7 @@ pub mod insn {
 
 pub mod func {
     pub use super::ffi::{
-        calc_thunk_func_target, fc_block_type_t, func_t, gdl_graph_t, get_func, get_func_num,
+        calc_thunk_func_target, fc_block_type_t, func_t, get_func, get_func_num,
         get_func_qty, getn_func, lock_func, qbasic_block_t, qflow_chart_t,
     };
     pub use super::ffix::{
