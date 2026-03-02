@@ -3,11 +3,10 @@ use std::mem;
 
 use bitflags::bitflags;
 
+use crate::Address;
 use crate::ffi::xref::cref_t::*;
 use crate::ffi::xref::dref_t::*;
 use crate::ffi::xref::*;
-
-use crate::Address;
 use crate::idb::IDB;
 
 pub struct XRef<'a> {
@@ -18,14 +17,7 @@ pub struct XRef<'a> {
 impl<'a> Clone for XRef<'a> {
     fn clone(&self) -> Self {
         Self {
-            inner: xrefblk_t {
-                from: self.inner.from,
-                to: self.inner.to,
-                iscode: self.inner.iscode,
-                type_: self.inner.type_,
-                user: self.inner.user,
-                _flags: self.inner._flags,
-            },
+            inner: self.inner,
             _marker: PhantomData,
         }
     }

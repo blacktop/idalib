@@ -2,17 +2,17 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::Address;
+pub use crate::ffi::hexrays::{HexRaysError, HexRaysErrorCode};
 use crate::ffi::hexrays::{
     addr_range, cblock_iter, cblock_t, cfunc_t, cfuncptr_t, cinsn_t, eamap_result,
     idalib_hexrays_cblock_iter, idalib_hexrays_cblock_iter_next, idalib_hexrays_cblock_len,
-    idalib_hexrays_cfunc_find_stmts_at, idalib_hexrays_cfunc_get_stmt_bounds,
-    idalib_hexrays_cfunc_has_eamap, idalib_hexrays_cfunc_pseudocode, idalib_hexrays_cfuncptr_inner,
-    idalib_hexrays_cinsn_ea, idalib_hexrays_cinsn_op, idalib_hexrays_cinsn_print,
-    idalib_hexrays_eamap_result_len, idalib_hexrays_eamap_result_next,
+    idalib_hexrays_cfunc_body, idalib_hexrays_cfunc_find_stmts_at,
+    idalib_hexrays_cfunc_get_stmt_bounds, idalib_hexrays_cfunc_has_eamap,
+    idalib_hexrays_cfunc_pseudocode, idalib_hexrays_cfuncptr_inner, idalib_hexrays_cinsn_ea,
+    idalib_hexrays_cinsn_op, idalib_hexrays_cinsn_print, idalib_hexrays_eamap_result_len,
+    idalib_hexrays_eamap_result_next,
 };
 use crate::idb::IDB;
-
-pub use crate::ffi::hexrays::{HexRaysError, HexRaysErrorCode};
 
 /// Address range covered by a decompiled statement
 #[derive(Debug, Clone, Copy)]
@@ -146,14 +146,9 @@ impl<'a> CFunction<'a> {
         unsafe { idalib_hexrays_cfunc_pseudocode(self.ptr) }
     }
 
-    fn as_cfunc(&self) -> &cfunc_t {
-        unsafe { self.ptr.as_ref().expect("valid pointer") }
-    }
-
     /// Get the function body as a CBlock.
     pub fn body(&self) -> CBlock<'_> {
-        let cf = self.as_cfunc();
-        let ptr = unsafe { cf.body.__bindgen_anon_1.cblock };
+        let ptr = unsafe { idalib_hexrays_cfunc_body(self.ptr) };
 
         CBlock {
             ptr,

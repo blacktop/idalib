@@ -3,9 +3,8 @@ use std::marker::PhantomData;
 use bitflags::bitflags;
 
 use crate::ffi::loader::*;
-use crate::idb::IDB;
-
 pub use crate::ffi::processor::ids as id;
+use crate::idb::IDB;
 
 bitflags! {
     #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

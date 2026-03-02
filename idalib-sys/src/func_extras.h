@@ -49,6 +49,22 @@ const qbasic_block_t *idalib_qflow_graph_getn_block(const qflow_chart_t *cfg, si
   return n < std::size(cfg->blocks) ? &cfg->blocks[n] : nullptr;
 }
 
+int idalib_qflow_graph_calc_block_type(const qflow_chart_t *cfg, size_t n) {
+  return static_cast<int>(cfg->calc_block_type(n));
+}
+
+int idalib_qflow_graph_entry(const qflow_chart_t *cfg) {
+  return cfg->entry();
+}
+
+int idalib_qflow_graph_exit(const qflow_chart_t *cfg) {
+  return cfg->exit();
+}
+
+int idalib_qflow_graph_node_qty(const qflow_chart_t *cfg) {
+  return cfg->node_qty();
+}
+
 rust::Slice<const int> idalib_qbasic_block_succs(qbasic_block_t const *blk) {
   return rust::Slice(std::begin(blk->succ), std::size(blk->succ));
 }

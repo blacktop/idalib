@@ -54,6 +54,8 @@ impl IDAError {
 }
 
 include_cpp! {
+    // NOTE: this fixes compilation issues on Windows when cross-compiling
+    #include "fixups.h"
     // NOTE: this fixes autocxx's inability to detect ea_t, optype_t as POD...
     #include "types.h"
 
@@ -324,7 +326,7 @@ include_cpp! {
     generate!("dt_half")
 
     // xref
-    generate_pod!("xrefblk_t")
+    extern_cpp_type!("xrefblk_t", crate::pod::xrefblk_t)
 
     // NOTE: autocxx fails to generate methods on xrefblk_t...
     generate!("xrefblk_t_first_from")
@@ -533,7 +535,7 @@ pub mod hexrays {
     };
     pub use super::ffix::{
         addr_range, cblock_iter, eamap_result, idalib_hexrays_cblock_iter,
-        idalib_hexrays_cblock_iter_next, idalib_hexrays_cblock_len,
+        idalib_hexrays_cblock_iter_next, idalib_hexrays_cblock_len, idalib_hexrays_cfunc_body,
         idalib_hexrays_cfunc_find_stmts_at, idalib_hexrays_cfunc_get_stmt_bounds,
         idalib_hexrays_cfunc_has_eamap, idalib_hexrays_cfunc_pseudocode,
         idalib_hexrays_cfuncptr_inner, idalib_hexrays_cinsn_ea, idalib_hexrays_cinsn_op,
@@ -712,6 +714,91 @@ pub mod pod {
 
     include!(concat!(env!("OUT_DIR"), "/pod.rs"));
 
+    pub const UA_MAXOP: usize = 8;
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct range_t {
+        pub start_ea: crate::ea_t,
+        pub end_ea: crate::ea_t,
+    }
+
+    impl Default for range_t {
+        fn default() -> Self {
+            Self {
+                start_ea: crate::into_ea(0),
+                end_ea: crate::into_ea(0),
+            }
+        }
+    }
+
+    impl range_t {
+        #[inline]
+        pub fn contains(&self, ea: crate::ea_t) -> bool {
+            let start = crate::from_ea(self.start_ea);
+            let end = crate::from_ea(self.end_ea);
+            let value = crate::from_ea(ea);
+            start <= value && end > value
+        }
+
+        #[inline]
+        pub fn size(&self) -> crate::ea_t {
+            crate::into_ea(crate::from_ea(self.end_ea).wrapping_sub(crate::from_ea(self.start_ea)))
+        }
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct xrefblk_t {
+        pub from: crate::ea_t,
+        pub to: crate::ea_t,
+        pub iscode: bool,
+        pub type_: uchar,
+        pub user: bool,
+        pub _flags: uchar,
+    }
+
+    impl Default for xrefblk_t {
+        fn default() -> Self {
+            Self {
+                from: crate::into_ea(0),
+                to: crate::into_ea(0),
+                iscode: false,
+                type_: 0,
+                user: false,
+                _flags: 0,
+            }
+        }
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct insn_t {
+        pub cs: crate::ea_t,
+        pub ip: crate::ea_t,
+        pub ea: crate::ea_t,
+        pub itype: uint16,
+        pub size: uint16,
+        pub auxpref: u32,
+        pub segpref: ::std::os::raw::c_char,
+        pub insnpref: ::std::os::raw::c_char,
+        pub flags: i16,
+        pub ops: [op_t; UA_MAXOP],
+    }
+
+    const _: [(); 360] = [(); std::mem::size_of::<insn_t>()];
+    const _: [(); 8] = [(); std::mem::align_of::<insn_t>()];
+
+    unsafe impl cxx::ExternType for range_t {
+        type Id = cxx::type_id!("range_t");
+        type Kind = cxx::kind::Trivial;
+    }
+
+    unsafe impl cxx::ExternType for xrefblk_t {
+        type Id = cxx::type_id!("xrefblk_t");
+        type Kind = cxx::kind::Trivial;
+    }
+
     unsafe impl cxx::ExternType for op_t {
         type Id = cxx::type_id!("op_t");
         type Kind = cxx::kind::Trivial;
@@ -859,7 +946,7 @@ mod ffix {
         type compiler_info_t = super::inf::compiler_info_t;
         // type cm_t = super::ffi::cm_t;
         type filetype_t = super::ffi::filetype_t;
-        type range_t = super::ffi::range_t;
+        type range_t = super::pod::range_t;
         // type uval_t = autocxx::c_ulonglong;
 
         type func_t = super::ffi::func_t;
@@ -937,11 +1024,16 @@ mod ffix {
             f: *mut func_t,
             flags: c_int,
         ) -> Result<UniquePtr<qflow_chart_t>>;
+        unsafe fn idalib_qflow_graph_calc_block_type(f: *const qflow_chart_t, n: usize) -> c_int;
+        unsafe fn idalib_qflow_graph_entry(f: *const qflow_chart_t) -> c_int;
+        unsafe fn idalib_qflow_graph_exit(f: *const qflow_chart_t) -> c_int;
+        unsafe fn idalib_qflow_graph_node_qty(f: *const qflow_chart_t) -> c_int;
 
         unsafe fn idalib_hexrays_cfuncptr_inner(
             f: *const qrefcnt_t_cfunc_t_AutocxxConcrete,
         ) -> *mut cfunc_t;
         unsafe fn idalib_hexrays_cfunc_pseudocode(f: *mut cfunc_t) -> String;
+        unsafe fn idalib_hexrays_cfunc_body(f: *mut cfunc_t) -> *mut cblock_t;
 
         unsafe fn idalib_hexrays_decompile_func(
             f: *mut func_t,
@@ -1259,7 +1351,8 @@ mod ffix {
     }
 }
 
-pub use ffi::{ea_t, range_t};
+pub use ffi::ea_t;
+pub use pod::range_t;
 pub const BADADDR: ea_t = into_ea(0xffffffff_ffffffffu64);
 
 #[inline(always)]
@@ -1282,7 +1375,6 @@ pub mod insn {
 
     use super::ea_t;
     use super::ffi::decode_insn;
-
     pub use super::pod::insn_t;
 
     pub fn decode(ea: ea_t) -> Option<insn_t> {
@@ -1330,13 +1422,14 @@ pub mod insn {
 
 pub mod func {
     pub use super::ffi::{
-        calc_thunk_func_target, fc_block_type_t, func_t, get_func, get_func_num,
-        get_func_qty, getn_func, lock_func, qbasic_block_t, qflow_chart_t,
+        calc_thunk_func_target, fc_block_type_t, func_t, get_func, get_func_num, get_func_qty,
+        getn_func, lock_func, qbasic_block_t, qflow_chart_t,
     };
     pub use super::ffix::{
         idalib_func_flags, idalib_func_flow_chart, idalib_func_name, idalib_get_func_cmt,
-        idalib_qbasic_block_preds, idalib_qbasic_block_succs, idalib_qflow_graph_getn_block,
-        idalib_set_func_cmt,
+        idalib_qbasic_block_preds, idalib_qbasic_block_succs, idalib_qflow_graph_calc_block_type,
+        idalib_qflow_graph_entry, idalib_qflow_graph_exit, idalib_qflow_graph_getn_block,
+        idalib_qflow_graph_node_qty, idalib_set_func_cmt,
     };
 
     pub mod flags {
@@ -1361,7 +1454,6 @@ pub mod processor {
     pub use super::ffix::{
         idalib_is_thumb_at, idalib_ph_id, idalib_ph_long_name, idalib_ph_short_name,
     };
-
     pub use super::idp as ids;
 }
 
@@ -1374,7 +1466,6 @@ pub mod segment {
         saRel512Bytes, saRel1024Bytes, saRel2048Bytes, saRelByte, saRelDble, saRelPage, saRelPara,
         saRelQword, saRelWord, segment_t,
     };
-
     pub use super::ffix::{
         idalib_segm_align, idalib_segm_bitness, idalib_segm_bytes, idalib_segm_name,
         idalib_segm_perm, idalib_segm_type,
@@ -1399,9 +1490,10 @@ pub mod util {
 pub mod xref {
     pub use super::ffi::{
         XREF_ALL, XREF_BASE, XREF_DATA, XREF_FAR, XREF_MASK, XREF_PASTEND, XREF_TAIL, XREF_TID,
-        XREF_USER, cref_t, dref_t, has_external_refs, xrefblk_t, xrefblk_t_first_from,
-        xrefblk_t_first_to, xrefblk_t_next_from, xrefblk_t_next_to,
+        XREF_USER, cref_t, dref_t, has_external_refs, xrefblk_t_first_from, xrefblk_t_first_to,
+        xrefblk_t_next_from, xrefblk_t_next_to,
     };
+    pub use super::pod::xrefblk_t;
 }
 
 pub mod comments {
@@ -1486,17 +1578,15 @@ pub mod script {
 }
 
 pub mod ida {
-    use std::env;
     use std::ffi::CString;
     use std::path::Path;
-    use std::ptr;
+    use std::{env, ptr};
 
     use autocxx::prelude::*;
+    pub use ffi::auto_wait;
 
     use super::platform::is_main_thread;
     use super::{IDAError, ea_t, ffi, ffix};
-
-    pub use ffi::auto_wait;
 
     pub fn is_license_valid() -> bool {
         assert!(

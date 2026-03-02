@@ -1,10 +1,9 @@
 use std::marker::PhantomData;
 
 use crate::Address;
+pub use crate::ffi::processor::ids as id;
 use crate::ffi::processor::*;
 use crate::idb::IDB;
-
-pub use crate::ffi::processor::ids as id;
 
 pub struct Processor<'a> {
     ptr: *const processor_t,

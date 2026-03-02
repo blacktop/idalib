@@ -60,6 +60,13 @@ rust::String idalib_hexrays_cfunc_pseudocode(cfunc_t *f) {
   return rust::String(sb.str());
 }
 
+cblock_t *idalib_hexrays_cfunc_body(cfunc_t *f) {
+  if (f == nullptr) {
+    return nullptr;
+  }
+  return f->body.cblock;
+}
+
 std::unique_ptr<cblock_iter> idalib_hexrays_cblock_iter(cblock_t *b) {
   return std::unique_ptr<cblock_iter>(new cblock_iter(b));
 }

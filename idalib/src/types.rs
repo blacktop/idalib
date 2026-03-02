@@ -1,10 +1,12 @@
+use std::ffi::CString;
+
+use autocxx::c_uint;
+
 use crate::ffi::types::{
     idalib_apply_decl_type, idalib_apply_named_type, idalib_declare_type, idalib_declare_types,
     idalib_get_local_type, idalib_guess_tinfo, local_type_info, type_decl_result,
     type_guess_result,
 };
-use autocxx::c_uint;
-use std::ffi::CString;
 
 #[derive(Debug, Clone)]
 pub struct LocalTypeInfo {
