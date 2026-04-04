@@ -175,7 +175,6 @@ pub fn force_batch_mode() {
 
 pub fn init_library() -> &'static Mutex<()> {
     INIT.get_or_init(|| {
-        force_batch_mode();
         ffi::ida::init_library().expect("IDA initialised successfully");
         Mutex::new(())
     })

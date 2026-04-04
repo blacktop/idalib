@@ -1578,9 +1578,10 @@ pub mod script {
 }
 
 pub mod ida {
+    use std::env;
     use std::ffi::CString;
+    use std::ffi::c_char;
     use std::path::Path;
-    use std::{env, ptr};
 
     use autocxx::prelude::*;
     pub use ffi::auto_wait;
@@ -1611,6 +1612,13 @@ pub mod ida {
         }
     }
 
+    pub(crate) fn init_library_args() -> Result<Vec<CString>, IDAError> {
+        ["idalib", "-B"]
+            .into_iter()
+            .map(|arg| CString::new(arg).map_err(IDAError::ffi))
+            .collect()
+    }
+
     // NOTE: once; main thread
     pub fn init_library() -> Result<(), IDAError> {
         assert!(
@@ -1620,7 +1628,13 @@ pub mod ida {
 
         unsafe { env::set_var("TVHEADLESS", "1") };
 
-        let res = unsafe { ffix::init_library(c_int(0), ptr::null_mut()) };
+        let mut args = init_library_args()?;
+        let mut argv = args
+            .iter_mut()
+            .map(|arg| arg.as_ptr() as *mut c_char)
+            .collect::<Vec<_>>();
+
+        let res = unsafe { ffix::init_library(c_int(argv.len() as _), argv.as_mut_ptr()) };
 
         if res != c_int(0) {
             Err(IDAError::Init(res))
@@ -1762,5 +1776,20 @@ pub mod ida {
         } else {
             Err(IDAError::GetVersion)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ida::init_library_args;
+
+    #[test]
+    fn init_library_args_enable_batch_mode() {
+        let args = init_library_args().expect("static init args should be valid cstrings");
+        let rendered = args
+            .iter()
+            .map(|arg| arg.to_str().expect("static init arg should be utf-8"))
+            .collect::<Vec<_>>();
+        assert_eq!(rendered, vec!["idalib", "-B"]);
     }
 }
