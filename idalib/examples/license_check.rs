@@ -1,7 +1,7 @@
 use idalib::{is_valid_license, license_id};
 
 fn main() -> anyhow::Result<()> {
-    if !is_valid_license() {
+    if !is_valid_license()? {
         println!("invalid license!");
         return Ok(());
     }

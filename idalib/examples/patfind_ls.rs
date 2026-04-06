@@ -2,7 +2,7 @@ use idalib::enable_console_messages;
 use idalib::idb::*;
 
 fn main() -> anyhow::Result<()> {
-    enable_console_messages(true);
+    enable_console_messages(true)?;
 
     let idb = IDB::open("./tests/ls")?;
 

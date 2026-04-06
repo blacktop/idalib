@@ -37,12 +37,12 @@ impl From<LicenseId> for [u8; 6] {
     }
 }
 
-pub fn is_valid_license() -> bool {
-    init_library();
-    ffi::ida::is_license_valid()
+pub fn is_valid_license() -> Result<bool, IDAError> {
+    init_library()?;
+    Ok(ffi::ida::is_license_valid())
 }
 
 pub fn license_id() -> Result<LicenseId, IDAError> {
-    init_library();
+    init_library()?;
     Ok(LicenseId(ffi::ida::license_id()?))
 }

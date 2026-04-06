@@ -1310,6 +1310,7 @@ mod ffix {
             minor: *mut c_int,
             build: *mut c_int,
         ) -> bool;
+        unsafe fn idalib_set_batch_mode(enable: bool);
 
         // lines
         unsafe fn idalib_generate_disasm_line(ea: c_ulonglong) -> String;
@@ -1580,7 +1581,6 @@ pub mod script {
 pub mod ida {
     use std::env;
     use std::ffi::CString;
-    use std::ffi::c_char;
     use std::path::Path;
 
     use autocxx::prelude::*;
@@ -1612,12 +1612,8 @@ pub mod ida {
         }
     }
 
-    #[cfg(target_os = "windows")]
-    pub(crate) fn init_library_args() -> Result<Vec<CString>, IDAError> {
-        ["idalib", "-B"]
-            .into_iter()
-            .map(|arg| CString::new(arg).map_err(IDAError::ffi))
-            .collect()
+    pub fn set_batch_mode(enable: bool) {
+        unsafe { ffix::idalib_set_batch_mode(enable) };
     }
 
     // NOTE: once; main thread
@@ -1629,19 +1625,8 @@ pub mod ida {
 
         unsafe { env::set_var("TVHEADLESS", "1") };
 
-        #[cfg(target_os = "windows")]
-        let res = {
-            let mut args = init_library_args()?;
-            let mut argv = args
-                .iter_mut()
-                .map(|arg| arg.as_ptr() as *mut c_char)
-                .collect::<Vec<_>>();
-
-            unsafe { ffix::init_library(c_int(argv.len() as _), argv.as_mut_ptr()) }
-        };
-
-        #[cfg(not(target_os = "windows"))]
-        let res = unsafe { ffix::init_library(c_int(0), std::ptr::null_mut()) };
+        let res =
+            unsafe { ffix::init_library(c_int(0), std::ptr::null_mut()) };
 
         if res != c_int(0) {
             Err(IDAError::Init(res))
@@ -1786,17 +1771,3 @@ pub mod ida {
     }
 }
 
-#[cfg(all(test, target_os = "windows"))]
-mod tests {
-    use crate::ida::init_library_args;
-
-    #[test]
-    fn init_library_args_enable_batch_mode() {
-        let args = init_library_args().expect("static init args should be valid cstrings");
-        let rendered = args
-            .iter()
-            .map(|arg| arg.to_str().expect("static init arg should be utf-8"))
-            .collect::<Vec<_>>();
-        assert_eq!(rendered, vec!["idalib", "-B"]);
-    }
-}

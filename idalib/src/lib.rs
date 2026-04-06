@@ -157,38 +157,43 @@ impl std::fmt::Display for IDAVersion {
     }
 }
 
-static INIT: OnceLock<Mutex<()>> = OnceLock::new();
-
-#[cfg(not(target_os = "windows"))]
-unsafe extern "C" {
-    static mut batch: std::ffi::c_char;
-}
+static INIT: OnceLock<Result<Mutex<()>, String>> = OnceLock::new();
 
 pub(crate) type IDARuntimeHandle = MutexGuard<'static, ()>;
 
 pub fn force_batch_mode() {
-    #[cfg(not(target_os = "windows"))]
-    unsafe {
-        batch = 1;
+    ffi::ida::set_batch_mode(true);
+}
+
+/// Initialize the IDA library. Must be called on the main thread.
+///
+/// Returns the library-wide mutex on success. The result is cached:
+/// subsequent calls return the same outcome without re-initializing.
+pub fn init_library() -> Result<&'static Mutex<()>, IDAError> {
+    let result = INIT.get_or_init(|| {
+        match ffi::ida::init_library() {
+            Ok(()) => {
+                force_batch_mode();
+                Ok(Mutex::new(()))
+            }
+            Err(e) => Err(format!("{e}")),
+        }
+    });
+    match result {
+        Ok(m) => Ok(m),
+        Err(msg) => Err(IDAError::ffi_with(msg.clone())),
     }
 }
 
-pub fn init_library() -> &'static Mutex<()> {
-    INIT.get_or_init(|| {
-        force_batch_mode();
-        ffi::ida::init_library().expect("IDA initialised successfully");
-        Mutex::new(())
-    })
+pub(crate) fn prepare_library() -> Result<IDARuntimeHandle, IDAError> {
+    let mutex = init_library()?;
+    Ok(mutex.lock().expect("IDA library mutex poisoned"))
 }
 
-pub(crate) fn prepare_library() -> IDARuntimeHandle {
-    let mutex = init_library();
-    mutex.lock().unwrap()
-}
-
-pub fn enable_console_messages(enabled: bool) {
-    init_library();
+pub fn enable_console_messages(enabled: bool) -> Result<(), IDAError> {
+    init_library()?;
     ffi::ida::enable_console_messages(enabled);
+    Ok(())
 }
 
 pub fn version() -> Result<IDAVersion, IDAError> {

@@ -142,7 +142,7 @@ impl IDB {
         save: bool,
         args: &[impl AsRef<str>],
     ) -> Result<Self, IDAError> {
-        let _guard = prepare_library();
+        let _guard = prepare_library()?;
         let path = path.as_ref();
 
         if !path.exists() || !path.is_file() {
