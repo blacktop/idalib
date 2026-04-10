@@ -36,17 +36,22 @@ fn platform_clang_args() -> Vec<&'static str> {
     let os = target_os();
     let arch = target_arch();
 
-    if os == "linux" {
+    let mut args = if os == "linux" {
         vec!["-std=c++17", "-w", "-D__LINUX__=1", "-D__EA64__=1"]
-    } else if os == "macos" && arch == "aarch64" {
-        vec!["-std=c++17", "-D__MACOS__=1", "-D__ARM__=1", "-D__EA64__=1"]
     } else if os == "macos" {
         vec!["-std=c++17", "-D__MACOS__=1", "-D__EA64__=1"]
     } else if os == "windows" {
         vec!["-std=c++17", "-D__NT__=1", "-D__EA64__=1"]
     } else {
         panic!("unsupported platform: {}", os)
+    };
+
+    // pro.h gates NULL_VA_LIST and va_list handling on __ARM__
+    if arch == "aarch64" {
+        args.push("-D__ARM__=1");
     }
+
+    args
 }
 
 fn configure_and_generate(builder: BindgenBuilder, ida: &Path, output: impl AsRef<Path>) {
@@ -94,18 +99,23 @@ fn main() {
     let arch = target_arch();
 
     if os == "linux" {
-        builder
-            .cargo_warnings(false)
-            .warnings(false)
-            .extra_warnings(false)
-            .flag_if_supported("-std=c++17")
-            .flag_if_supported("-Wno-nullability-completeness")
-            .flag_if_supported("-Wno-nontrivial-memcall")
-            .flag_if_supported("-Wno-varargs")
-            .flag_if_supported("-fpermissive") // Allow non-conforming code
-            .define("__LINUX__", "1")
-            .define("__EA64__", "1")
-            .compile("libida-stubs");
+        let mut b = builder;
+        b.cargo_warnings(false);
+        b.warnings(false);
+        b.extra_warnings(false);
+        b.flag_if_supported("-std=c++17");
+        b.flag_if_supported("-Wno-nullability-completeness");
+        b.flag_if_supported("-Wno-nontrivial-memcall");
+        b.flag_if_supported("-Wno-varargs");
+        b.flag_if_supported("-fpermissive"); // Allow non-conforming code
+        b.define("__LINUX__", "1");
+        b.define("__EA64__", "1");
+
+        if arch == "aarch64" {
+            b.define("__ARM__", "1");
+        }
+
+        b.compile("libida-stubs");
     } else if os == "macos" {
         let mut b = builder;
         b.cargo_warnings(false);

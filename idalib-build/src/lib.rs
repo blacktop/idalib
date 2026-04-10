@@ -31,6 +31,10 @@ fn target_arch() -> String {
     })
 }
 
+pub fn requires_local_ida_install() -> bool {
+    target_os() == "linux" && target_arch() == "aarch64"
+}
+
 fn link_path() -> PathBuf {
     let os = target_os();
     if os == "macos" {
@@ -60,7 +64,11 @@ pub fn idalib_sdk_paths_with(check: bool) -> (PathBuf, PathBuf, PathBuf, PathBuf
     let arch = target_arch();
 
     let (stubs_path, idalib, ida) = if os == "linux" {
-        let path = sdk_path.join("lib/x64_linux_gcc_64");
+        let path = if arch == "aarch64" {
+            sdk_path.join("lib/arm64_linux_gcc_64")
+        } else {
+            sdk_path.join("lib/x64_linux_gcc_64")
+        };
         let idalib = path.join("libidalib.so");
         let ida = path.join("libida.so");
         (path, idalib, ida)
@@ -158,6 +166,7 @@ pub fn configure_idasdk_linkage() {
 
 pub fn configure_linkage() -> anyhow::Result<()> {
     let os = target_os();
+    let arch = target_arch();
 
     if os == "windows" {
         configure_idasdk_linkage();
@@ -165,6 +174,22 @@ pub fn configure_linkage() -> anyhow::Result<()> {
     }
 
     let (install_path, _, _) = idalib_install_paths_with(false);
+
+    // IDA 9.3 ships a native Linux ARM64 build but the SDK does not yet include
+    // lib/arm64_linux_gcc_64 stub libraries. Link directly against the runtime
+    // .so files in the install dir (rpath and -L both point at the install).
+    if os == "linux" && arch == "aarch64" {
+        println!(
+            "cargo::rustc-link-arg=-Wl,-rpath,{0},-L{0},-l:libida.so",
+            install_path.display(),
+        );
+        println!(
+            "cargo::rustc-link-arg=-Wl,-rpath,{0},-L{0},-l:libidalib.so",
+            install_path.display(),
+        );
+        return Ok(());
+    }
+
     let (_, stub_path, _, _) = idalib_sdk_paths();
 
     if os == "linux" {

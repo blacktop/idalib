@@ -153,12 +153,17 @@ impl Operand {
         OperandFlags::from_bits_retain(self.inner.flags)
     }
 
-    pub fn offb(&self) -> i8 {
-        self.inner.offb
+    // SDK declares offb/offo/specflag* as `char`, which is signed on x86_64
+    // but unsigned on aarch64. Cast to u8 for a stable, semantically correct API.
+    // The cast is a no-op on aarch64, hence the allow.
+    #[allow(clippy::unnecessary_cast)]
+    pub fn offb(&self) -> u8 {
+        self.inner.offb as u8
     }
 
-    pub fn offo(&self) -> i8 {
-        self.inner.offo
+    #[allow(clippy::unnecessary_cast)]
+    pub fn offo(&self) -> u8 {
+        self.inner.offo as u8
     }
 
     pub fn n(&self) -> usize {
@@ -256,33 +261,37 @@ impl Operand {
         }
     }
 
-    pub fn processor_specific_flag1(&self) -> Option<i8> {
+    #[allow(clippy::unnecessary_cast)]
+    pub fn processor_specific_flag1(&self) -> Option<u8> {
         if self.is_processor_specific() {
-            Some(self.inner.specflag1)
+            Some(self.inner.specflag1 as u8)
         } else {
             None
         }
     }
 
-    pub fn processor_specific_flag2(&self) -> Option<i8> {
+    #[allow(clippy::unnecessary_cast)]
+    pub fn processor_specific_flag2(&self) -> Option<u8> {
         if self.is_processor_specific() {
-            Some(self.inner.specflag2)
+            Some(self.inner.specflag2 as u8)
         } else {
             None
         }
     }
 
-    pub fn processor_specific_flag3(&self) -> Option<i8> {
+    #[allow(clippy::unnecessary_cast)]
+    pub fn processor_specific_flag3(&self) -> Option<u8> {
         if self.is_processor_specific() {
-            Some(self.inner.specflag3)
+            Some(self.inner.specflag3 as u8)
         } else {
             None
         }
     }
 
-    pub fn processor_specific_flag4(&self) -> Option<i8> {
+    #[allow(clippy::unnecessary_cast)]
+    pub fn processor_specific_flag4(&self) -> Option<u8> {
         if self.is_processor_specific() {
-            Some(self.inner.specflag4)
+            Some(self.inner.specflag4 as u8)
         } else {
             None
         }

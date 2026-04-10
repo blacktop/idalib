@@ -1625,8 +1625,7 @@ pub mod ida {
 
         unsafe { env::set_var("TVHEADLESS", "1") };
 
-        let res =
-            unsafe { ffix::init_library(c_int(0), std::ptr::null_mut()) };
+        let res = unsafe { ffix::init_library(c_int(0), std::ptr::null_mut()) };
 
         if res != c_int(0) {
             Err(IDAError::Init(res))
@@ -1770,4 +1769,3 @@ pub mod ida {
         }
     }
 }
-

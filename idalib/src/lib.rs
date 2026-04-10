@@ -170,14 +170,12 @@ pub fn force_batch_mode() {
 /// Returns the library-wide mutex on success. The result is cached:
 /// subsequent calls return the same outcome without re-initializing.
 pub fn init_library() -> Result<&'static Mutex<()>, IDAError> {
-    let result = INIT.get_or_init(|| {
-        match ffi::ida::init_library() {
-            Ok(()) => {
-                force_batch_mode();
-                Ok(Mutex::new(()))
-            }
-            Err(e) => Err(format!("{e}")),
+    let result = INIT.get_or_init(|| match ffi::ida::init_library() {
+        Ok(()) => {
+            force_batch_mode();
+            Ok(Mutex::new(()))
         }
+        Err(e) => Err(format!("{e}")),
     });
     match result {
         Ok(m) => Ok(m),

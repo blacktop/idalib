@@ -115,10 +115,14 @@ linking:
 - `idalib_build::configure_idalib_linkage`: links against `(lib)ida` and
   `(lib)idalib` in the IDA installation directory.
 - `idalib_build::configure_idasdk_linkage`: links against the `(lib)ida` and
-  `(lib)idalib` stub libraries bundled with the SDK.
+  `(lib)idalib` stub libraries bundled with the SDK. IDA 9.3 does not ship
+  Linux arm64 stub libraries, so that fallback is only available on Linux
+  x86_64, macOS, and Windows.
 - `idalib_build::configure_linkage`: links against the `(lib)ida` and
   `(lib)idalib` stub libraries and for Linux/macOS sets the RPATH to refer to
-  the detected (or specified via `IDADIR`) installation directory.
+  the detected (or specified via `IDADIR`) installation directory. On Linux
+  arm64 it links directly against the installed runtime libraries because the
+  SDK does not include stub libraries for that target.
 
 ⚠️ Warning: If you copy the `build.rs` from `idalib/examples`, you may encounter
 unexpected behaviour when IDA is installed in a non-default location and
@@ -144,6 +148,11 @@ following `build.rs` which will help debug issues related to linking:
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (_, ida_path, idalib_path) = idalib_build::idalib_install_paths_with(false);
     if !ida_path.exists() || !idalib_path.exists() {
+        if idalib_build::requires_local_ida_install() {
+            return Err(
+                "IDA installation not found; Linux arm64 builds require a local IDA 9.3 install because the SDK does not ship arm64 Linux stub libraries".into(),
+            );
+        }
         println!("cargo::warning=IDA installation not found.");
         idalib_build::configure_idasdk_linkage();
     } else {

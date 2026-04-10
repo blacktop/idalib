@@ -519,8 +519,9 @@ impl<'a> Metadata<'a> {
         unsafe { idalib_inf_get_max_autoname_len() }
     }
 
-    pub fn nametype(&self) -> i8 {
-        unsafe { idalib_inf_get_nametype() }
+    pub fn nametype(&self) -> u8 {
+        // SDK returns `char`; cast for portable signedness across x86_64/aarch64
+        unsafe { idalib_inf_get_nametype() as u8 }
     }
 
     pub fn short_demnames(&self) -> u32 {
@@ -703,8 +704,9 @@ impl<'a> Metadata<'a> {
         unsafe { idalib_inf_get_strlit_break() }
     }
 
-    pub fn strlit_zeroes(&self) -> i8 {
-        unsafe { idalib_inf_get_strlit_zeroes() }
+    pub fn strlit_zeroes(&self) -> u8 {
+        // SDK returns `char`; cast for portable signedness across x86_64/aarch64
+        unsafe { idalib_inf_get_strlit_zeroes() as u8 }
     }
 
     pub fn strtype(&self) -> i32 {
