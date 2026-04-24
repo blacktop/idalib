@@ -1047,16 +1047,25 @@ mod ffix {
 
         // Eamap support - address to statements mapping
         unsafe fn idalib_hexrays_cfunc_has_eamap(f: *mut cfunc_t) -> bool;
+        // NOTE: `addr` MUST be `c_ulonglong` (not `u64`) to match the C++
+        // wrapper's `ea_t addr` parameter cross-platform. On macOS x86_64
+        // and aarch64 `std::uint64_t` (what cxx emits for `u64`) is
+        // `unsigned long long`, but on Linux x86_64 it is `unsigned long`,
+        // while `ea_t` is always `unsigned long long`. Mismatched function
+        // pointer types break C++ overload resolution when cross-compiling
+        // from macOS to Linux. Every other ea_t-typed function in this
+        // crate already uses `c_ulonglong`; these two were the only outliers.
         unsafe fn idalib_hexrays_cfunc_find_stmts_at(
             f: *mut cfunc_t,
-            addr: u64,
+            addr: c_ulonglong,
         ) -> UniquePtr<eamap_result>;
         unsafe fn idalib_hexrays_eamap_result_len(r: &eamap_result) -> usize;
         unsafe fn idalib_hexrays_eamap_result_next(r: Pin<&mut eamap_result>) -> *mut cinsn_t;
         unsafe fn idalib_hexrays_eamap_result_reset(r: Pin<&mut eamap_result>);
 
         // Statement info
-        unsafe fn idalib_hexrays_cinsn_ea(insn: *const cinsn_t) -> u64;
+        // See note above on `c_ulonglong` vs `u64`.
+        unsafe fn idalib_hexrays_cinsn_ea(insn: *const cinsn_t) -> c_ulonglong;
         unsafe fn idalib_hexrays_cinsn_op(insn: *const cinsn_t) -> c_int;
         unsafe fn idalib_hexrays_cinsn_print(insn: *const cinsn_t, func: *const cfunc_t) -> String;
 
