@@ -974,6 +974,7 @@ mod ffix {
             auto_analysis: bool,
         ) -> c_int;
         unsafe fn idalib_check_license() -> bool;
+        unsafe fn idalib_license_end_date() -> i64;
         unsafe fn idalib_get_license_id(id: &mut [u8; 6]) -> bool;
         unsafe fn idalib_load_dbg_dbginfo(path: *const c_char, verbose: bool) -> bool;
 
@@ -1596,6 +1597,16 @@ pub mod ida {
         );
 
         unsafe { ffix::idalib_check_license() }
+    }
+
+    pub fn license_end_date() -> Option<u64> {
+        assert!(
+            is_main_thread(),
+            "IDA cannot function correctly when not running on the main thread"
+        );
+
+        let raw = unsafe { ffix::idalib_license_end_date() };
+        if raw > 0 { Some(raw as u64) } else { None }
     }
 
     pub fn license_id() -> Result<[u8; 6], IDAError> {

@@ -42,6 +42,13 @@ pub fn is_valid_license() -> Result<bool, IDAError> {
     Ok(ffi::ida::is_license_valid())
 }
 
+/// License expiry as a Unix timestamp (seconds). `None` if the license
+/// manager is unavailable or the field is unset (e.g. perpetual license).
+pub fn license_end_date() -> Result<Option<u64>, IDAError> {
+    init_library()?;
+    Ok(ffi::ida::license_end_date())
+}
+
 pub fn license_id() -> Result<LicenseId, IDAError> {
     init_library()?;
     Ok(LicenseId(ffi::ida::license_id()?))
