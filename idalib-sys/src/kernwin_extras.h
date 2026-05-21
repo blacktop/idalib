@@ -127,14 +127,13 @@ bool idalib_check_license() {
   return !nres;
 }
 
+// Raw accessor; end_date is populated by get_or_borrow_license(), so the
+// Rust-side license_end_date() runs is_license_valid() first.
 int64_t idalib_license_end_date() {
   auto manager = get_license_manager();
   if (!manager) {
     return 0;
   }
-  // Populate manager state if not already done; ignore the result here,
-  // we only want end_date to be readable.
-  manager->_vtbl->check(manager, 0, 0);
   return static_cast<int64_t>(manager->end_date);
 }
 
