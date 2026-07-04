@@ -75,7 +75,12 @@ pub struct CInsn<'a> {
 impl<'a> CInsn<'a> {
     /// Get the address associated with this statement.
     pub fn address(&self) -> Address {
-        unsafe { idalib_hexrays_cinsn_ea(self.ptr) }
+        // `idalib_hexrays_cinsn_ea` returns `c_ulonglong` on the FFI
+        // boundary so the cxx-emitted C++ matches the SDK's `ea_t`
+        // (= `unsigned long long`) on every platform; cxx's
+        // `c_ulonglong` has a `From → u64` impl on every supported
+        // platform so `.into()` is free at runtime.
+        unsafe { idalib_hexrays_cinsn_ea(self.ptr).into() }
     }
 
     /// Get the opcode/type of this statement (cit_* constant).
@@ -170,7 +175,10 @@ impl<'a> CFunction<'a> {
     ///
     /// Returns `None` if no statements are found at the address.
     pub fn statements_at(&self, addr: Address) -> Option<StatementsAtAddr<'_>> {
-        let result = unsafe { idalib_hexrays_cfunc_find_stmts_at(self.ptr, addr) };
+        // See `CInsn::address` for why the FFI boundary is `c_ulonglong`.
+        // `Address` (= u64) → cxx `c_ulonglong` is the standard `.into()`
+        // conversion the rest of this crate uses for ea_t-typed args.
+        let result = unsafe { idalib_hexrays_cfunc_find_stmts_at(self.ptr, addr.into()) };
         if result.is_null() {
             None
         } else {
