@@ -9,10 +9,7 @@ pub fn is_main_thread() -> bool {
 pub fn is_main_thread() -> bool {
     use objc::*;
 
-    #[allow(unexpected_cfgs)]
-    unsafe {
-        msg_send![class!(NSThread), isMainThread]
-    }
+    unsafe { msg_send![class!(NSThread), isMainThread] }
 }
 
 #[cfg(target_os = "windows")]

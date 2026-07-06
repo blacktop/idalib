@@ -104,12 +104,19 @@ extern "C" license_manager_t *get_license_manager();
 extern "C" config_t *get_current_config();
 
 bool idalib_check_license() {
+#if IDA_SDK_VERSION >= 940
+  // IDA 9.4 changed the private license-manager ABI. Avoid probing the
+  // stripped internal layout here; IDA itself still enforces licensing during
+  // database open.
+  return true;
+#else
   auto manager = get_license_manager();
   if (!manager) {
     return false;
   }
 
-  auto res = manager->_vtbl->check(manager, 0, 0);
+  bool borrowed = false;
+  auto res = manager->_vtbl->check(manager, &borrowed, 0);
   if (res && res->is_ok) {
     return true;
   }
@@ -125,19 +132,27 @@ bool idalib_check_license() {
       manager, config->license_location, config->license_info, flags, &estr);
 
   return !nres;
+#endif
 }
 
 // Raw accessor; end_date is populated by get_or_borrow_license(), so the
 // Rust-side license_end_date() runs is_license_valid() first.
 int64_t idalib_license_end_date() {
+#if IDA_SDK_VERSION >= 940
+  return 0;
+#else
   auto manager = get_license_manager();
   if (!manager) {
     return 0;
   }
   return static_cast<int64_t>(manager->end_date);
+#endif
 }
 
 bool idalib_get_license_id(std::array<uint8_t, 6> &id) {
+#if IDA_SDK_VERSION >= 940
+  return false;
+#else
   if (!idalib_check_license()) {
     return false;
   }
@@ -147,13 +162,15 @@ bool idalib_get_license_id(std::array<uint8_t, 6> &id) {
     return false;
   }
 
-  auto res = manager->_vtbl->check(manager, 0, 0);
+  bool borrowed = false;
+  auto res = manager->_vtbl->check(manager, &borrowed, 0);
   if (res && res->is_ok) {
     std::copy(std::begin(res->lid), std::end(res->lid), std::begin(id));
     return true;
   }
 
   return false;
+#endif
 }
 
 int idalib_open_database_quiet(int argc, const char *const *argv,

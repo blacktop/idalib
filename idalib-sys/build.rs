@@ -94,6 +94,7 @@ fn main() {
     builder.file(ffi_path.join("types_extras.cc"));
     builder.file(ffi_path.join("frame_extras.cc"));
     builder.file(ffi_path.join("expr_extras.cc"));
+    builder.file(ffi_path.join("dscu_extras.cc"));
 
     let os = target_os();
     let arch = target_arch();
@@ -245,8 +246,37 @@ fn main() {
 
     println!("cargo::metadata=sdk={}", sdk_path.display());
 
-    println!(
-        "cargo::rerun-if-changed={}",
-        ffi_path.join("lib.rs").display()
-    );
+    for file in [
+        "lib.rs",
+        "auto_extras.h",
+        "bookmarks_extras.h",
+        "bytes_extras.h",
+        "comments_extras.h",
+        "dscu_extras.cc",
+        "dscu_extras.h",
+        "entry_extras.h",
+        "expr_extras.cc",
+        "expr_extras.h",
+        "fixups.h",
+        "frame_extras.cc",
+        "frame_extras.h",
+        "func_extras.h",
+        "hexrays_extras.h",
+        "idalib_extras.h",
+        "inf_extras.h",
+        "kernwin_extras.h",
+        "lines_extras.h",
+        "loader_extras.h",
+        "nalt_extras.h",
+        "ph_extras.h",
+        "search_extras.h",
+        "segm_extras.h",
+        "strings_extras.h",
+        "types_extras.cc",
+        "types_extras.h",
+        "udt_extras.cc",
+        "udt_extras.h",
+    ] {
+        println!("cargo::rerun-if-changed={}", ffi_path.join(file).display());
+    }
 }

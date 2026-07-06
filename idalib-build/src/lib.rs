@@ -40,11 +40,11 @@ pub fn requires_local_ida_install() -> bool {
 fn link_path() -> PathBuf {
     let os = target_os();
     if os == "macos" {
-        PathBuf::from("/Applications/IDA Professional 9.3.app/Contents/MacOS")
+        PathBuf::from("/Applications/IDA Professional 9.4.app/Contents/MacOS")
     } else if os == "linux" {
-        PathBuf::from(env::var("HOME").unwrap()).join("ida-pro-9.3")
+        PathBuf::from(env::var("HOME").unwrap()).join("ida-pro-9.4")
     } else if os == "windows" {
-        PathBuf::from("C:\\Program Files\\IDA Professional 9.3")
+        PathBuf::from("C:\\Program Files\\IDA Professional 9.4")
     } else {
         panic!("unsupported platform: {}", os)
     }

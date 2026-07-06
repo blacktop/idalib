@@ -909,6 +909,43 @@ mod ffix {
         error: String,
     }
 
+    #[derive(Debug, Clone, Default)]
+    struct dscu_image_info {
+        index: i32,
+        name: String,
+        file_name: String,
+        address: u64,
+        total_size: u64,
+        file_index: i64,
+        loaded: bool,
+    }
+
+    #[derive(Debug, Clone, Default)]
+    struct dscu_region_info {
+        start: u64,
+        size: u64,
+        region_type: i32,
+        image_index: i32,
+        name: String,
+        loaded: bool,
+    }
+
+    #[derive(Debug, Clone, Default)]
+    struct dscu_symbol_match {
+        symbol: String,
+        address: u64,
+        image_index: i32,
+    }
+
+    #[derive(Debug, Clone, Default)]
+    struct dscu_string_match {
+        address: u64,
+        image_index: i32,
+        file_index: u64,
+        file_offset: u64,
+        context: String,
+    }
+
     unsafe extern "C++" {
         include!("autocxxgen_ffi.h");
         include!("idalib.hpp");
@@ -935,6 +972,7 @@ mod ffix {
         include!("types_extras.h");
         include!("frame_extras.h");
         include!("expr_extras.h");
+        include!("dscu_extras.h");
 
         type c_short = autocxx::c_short;
         type c_int = autocxx::c_int;
@@ -1350,6 +1388,33 @@ mod ffix {
 
         // scripting
         unsafe fn idalib_run_python_snippet(code: &str, out: &mut script_result) -> bool;
+
+        unsafe fn idalib_dscu_available() -> bool;
+        unsafe fn idalib_dscu_input_file_path() -> String;
+        unsafe fn idalib_dscu_images_count() -> i32;
+        unsafe fn idalib_dscu_get_image_index(name: *const c_char) -> i32;
+        unsafe fn idalib_dscu_get_image_info(image_index: i32, out: &mut dscu_image_info) -> bool;
+        unsafe fn idalib_dscu_get_images(out: &mut Vec<dscu_image_info>) -> bool;
+        unsafe fn idalib_dscu_get_image_dependencies(
+            image_index: i32,
+            depth: i32,
+            out: &mut Vec<dscu_image_info>,
+        ) -> bool;
+        unsafe fn idalib_dscu_load_image(image_index: i32, out: &mut dscu_image_info) -> bool;
+        unsafe fn idalib_dscu_get_region_by_ea(ea: u64, out: &mut dscu_region_info) -> bool;
+        unsafe fn idalib_dscu_load_region(ea: u64, out: &mut dscu_region_info) -> bool;
+        unsafe fn idalib_dscu_find_symbols(
+            needle: *const c_char,
+            flags: u32,
+            max_count: u64,
+            out: &mut Vec<dscu_symbol_match>,
+        ) -> bool;
+        unsafe fn idalib_dscu_find_strings(
+            needle: *const c_char,
+            flags: u32,
+            max_count: u64,
+            out: &mut Vec<dscu_string_match>,
+        ) -> bool;
     }
 }
 
@@ -1577,6 +1642,17 @@ pub mod frame {
 
 pub mod script {
     pub use super::ffix::{idalib_run_python_snippet, script_result};
+}
+
+pub mod dscu {
+    pub use super::ffix::{
+        dscu_image_info, dscu_region_info, dscu_string_match, dscu_symbol_match,
+        idalib_dscu_available, idalib_dscu_find_strings, idalib_dscu_find_symbols,
+        idalib_dscu_get_image_dependencies, idalib_dscu_get_image_index,
+        idalib_dscu_get_image_info, idalib_dscu_get_images, idalib_dscu_get_region_by_ea,
+        idalib_dscu_images_count, idalib_dscu_input_file_path, idalib_dscu_load_image,
+        idalib_dscu_load_region,
+    };
 }
 
 pub mod ida {

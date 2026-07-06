@@ -79,6 +79,7 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 
 pub mod bookmarks;
 pub mod decompiler;
+pub mod dscu;
 pub mod frame;
 pub mod func;
 pub mod idb;
@@ -125,10 +126,10 @@ impl<'a> AddressFlags<'a> {
 
 /// Compile-time IDA SDK version this crate was built against.
 ///
-/// Derived from `IDA_SDK_VERSION` in `pro.h` (e.g. 930 → major 9, minor 3).
+/// Derived from `IDA_SDK_VERSION` in `pro.h` (e.g. 940 → major 9, minor 4).
 /// Compare with [`version()`] at runtime to detect mismatches before they
 /// cause undefined behavior.
-pub const SDK_VERSION: (i32, i32) = (9, 3);
+pub const SDK_VERSION: (i32, i32) = (9, 4);
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct IDAVersion {
