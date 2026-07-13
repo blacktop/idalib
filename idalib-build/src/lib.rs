@@ -32,7 +32,7 @@ fn target_arch() -> String {
 }
 
 /// Whether the SDK lacks stub libraries and a local IDA install is required
-/// to link. As of 9.3sp1 the SDK ships stubs for all platforms.
+/// to link. The IDA 9.4 SDK ships stubs for all supported 64-bit platforms.
 pub fn requires_local_ida_install() -> bool {
     false
 }
@@ -84,7 +84,11 @@ pub fn idalib_sdk_paths_with(check: bool) -> (PathBuf, PathBuf, PathBuf, PathBuf
         let ida = path.join("libida.dylib");
         (path, idalib, ida)
     } else if os == "windows" {
-        let path = sdk_path.join("lib/x64_win_64");
+        let path = if arch == "aarch64" {
+            sdk_path.join("lib/arm64_win_64")
+        } else {
+            sdk_path.join("lib/x64_win_64")
+        };
         let idalib = path.join("idalib.lib");
         let ida = path.join("ida.lib");
         (path, idalib, ida)
@@ -177,29 +181,11 @@ pub fn configure_linkage() -> anyhow::Result<()> {
     let (install_path, _, _) = idalib_install_paths_with(false);
     let (_, stub_path, _, _) = idalib_sdk_paths();
 
-    if os == "linux" {
-        println!(
-            "cargo::rustc-link-arg=-Wl,-rpath,{},-L{},-l:libida.so",
-            install_path.display(),
-            stub_path.display(),
-        );
-        println!(
-            "cargo::rustc-link-arg=-Wl,-rpath,{},-L{},-l:libidalib.so",
-            install_path.display(),
-            stub_path.display(),
-        );
-    } else if os == "macos" {
-        println!(
-            "cargo::rustc-link-arg=-Wl,-rpath,{},-L{},-lida",
-            install_path.display(),
-            stub_path.display(),
-        );
-        println!(
-            "cargo::rustc-link-arg=-Wl,-rpath,{},-L{},-lidalib",
-            install_path.display(),
-            stub_path.display(),
-        );
-    }
+    println!(
+        "cargo::rustc-link-arg=-Wl,-rpath,{}",
+        install_path.display()
+    );
+    configure_linkage_aux(&stub_path);
 
     Ok(())
 }
