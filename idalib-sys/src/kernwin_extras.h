@@ -103,7 +103,7 @@ struct config_t {
 extern "C" license_manager_t *get_license_manager();
 extern "C" config_t *get_current_config();
 
-bool idalib_check_license() {
+inline bool idalib_check_license() {
 #if IDA_SDK_VERSION >= 940
   // IDA 9.4 changed the private license-manager ABI. Avoid probing the
   // stripped internal layout here; IDA itself still enforces licensing during
@@ -137,7 +137,7 @@ bool idalib_check_license() {
 
 // Raw accessor; end_date is populated by get_or_borrow_license(), so the
 // Rust-side license_end_date() runs is_license_valid() first.
-int64_t idalib_license_end_date() {
+inline int64_t idalib_license_end_date() {
 #if IDA_SDK_VERSION >= 940
   return 0;
 #else
@@ -149,7 +149,7 @@ int64_t idalib_license_end_date() {
 #endif
 }
 
-bool idalib_get_license_id(std::array<uint8_t, 6> &id) {
+inline bool idalib_get_license_id(std::array<uint8_t, 6> &id) {
 #if IDA_SDK_VERSION >= 940
   return false;
 #else
@@ -173,7 +173,7 @@ bool idalib_get_license_id(std::array<uint8_t, 6> &id) {
 #endif
 }
 
-int idalib_open_database_quiet(int argc, const char *const *argv,
+inline int idalib_open_database_quiet(int argc, const char *const *argv,
                                bool auto_analysis) {
   auto new_file = 0;
   auto result = init_database(argc, argv, &new_file);
@@ -191,7 +191,7 @@ int idalib_open_database_quiet(int argc, const char *const *argv,
   return result;
 }
 
-rust::String idalib_ea2str(ea_t ea) {
+inline rust::String idalib_ea2str(ea_t ea) {
   auto out = qstring();
 
   if (ea2str(&out, ea)) {
@@ -201,6 +201,6 @@ rust::String idalib_ea2str(ea_t ea) {
   }
 }
 
-bool idalib_load_dbg_dbginfo(const char *path, bool verbose) {
+inline bool idalib_load_dbg_dbginfo(const char *path, bool verbose) {
   return load_dbg_dbginfo(path, nullptr, BADADDR, verbose);
 }

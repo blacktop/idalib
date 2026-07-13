@@ -28,9 +28,9 @@ struct cblock_iter {
   cblock_iter(cblock_t *b) : start(b->begin()), end(b->end()) {}
 };
 
-cfunc_t *idalib_hexrays_cfuncptr_inner(const cfuncptr_t *f) { return *f; }
+inline cfunc_t *idalib_hexrays_cfuncptr_inner(const cfuncptr_t *f) { return *f; }
 
-std::unique_ptr<cfuncptr_t>
+inline std::unique_ptr<cfuncptr_t>
 idalib_hexrays_decompile_func(func_t *f, hexrays_error_t *err, int flags) {
   hexrays_failure_t failure;
   cfuncptr_t cf = decompile_func(f, &failure, flags);
@@ -46,7 +46,7 @@ idalib_hexrays_decompile_func(func_t *f, hexrays_error_t *err, int flags) {
   return nullptr;
 }
 
-rust::String idalib_hexrays_cfunc_pseudocode(cfunc_t *f) {
+inline rust::String idalib_hexrays_cfunc_pseudocode(cfunc_t *f) {
   auto sv = f->get_pseudocode();
   auto sb = std::stringstream();
 
@@ -60,25 +60,25 @@ rust::String idalib_hexrays_cfunc_pseudocode(cfunc_t *f) {
   return rust::String(sb.str());
 }
 
-cblock_t *idalib_hexrays_cfunc_body(cfunc_t *f) {
+inline cblock_t *idalib_hexrays_cfunc_body(cfunc_t *f) {
   if (f == nullptr) {
     return nullptr;
   }
   return f->body.cblock;
 }
 
-std::unique_ptr<cblock_iter> idalib_hexrays_cblock_iter(cblock_t *b) {
+inline std::unique_ptr<cblock_iter> idalib_hexrays_cblock_iter(cblock_t *b) {
   return std::unique_ptr<cblock_iter>(new cblock_iter(b));
 }
 
-cinsn_t *idalib_hexrays_cblock_iter_next(cblock_iter &it) {
+inline cinsn_t *idalib_hexrays_cblock_iter_next(cblock_iter &it) {
   if (it.start != it.end) {
     return &*(it.start++);
   }
   return nullptr;
 }
 
-std::size_t idalib_hexrays_cblock_len(cblock_t *b) { return b->size(); }
+inline std::size_t idalib_hexrays_cblock_len(cblock_t *b) { return b->size(); }
 
 // ============================================================================
 // Eamap support - mapping addresses to decompiled statements
@@ -94,12 +94,12 @@ struct eamap_result {
 };
 
 /// Check if the eamap is available (bounds computed)
-bool idalib_hexrays_cfunc_has_eamap(cfunc_t *f) {
+inline bool idalib_hexrays_cfunc_has_eamap(cfunc_t *f) {
   return (f->statebits & CFS_BOUNDS) != 0;
 }
 
 /// Find statements at a specific address. Returns nullptr if not found.
-std::unique_ptr<eamap_result> idalib_hexrays_cfunc_find_stmts_at(cfunc_t *f,
+inline std::unique_ptr<eamap_result> idalib_hexrays_cfunc_find_stmts_at(cfunc_t *f,
                                                                  ea_t addr) {
   eamap_t &em = f->get_eamap();
   auto it = eamap_find(&em, addr);
@@ -110,12 +110,12 @@ std::unique_ptr<eamap_result> idalib_hexrays_cfunc_find_stmts_at(cfunc_t *f,
 }
 
 /// Get the number of statements at this address
-std::size_t idalib_hexrays_eamap_result_len(const eamap_result &r) {
+inline std::size_t idalib_hexrays_eamap_result_len(const eamap_result &r) {
   return r.vec ? r.vec->size() : 0;
 }
 
 /// Get the next statement from the result, or nullptr if exhausted
-cinsn_t *idalib_hexrays_eamap_result_next(eamap_result &r) {
+inline cinsn_t *idalib_hexrays_eamap_result_next(eamap_result &r) {
   if (!r.vec || r.index >= r.vec->size()) {
     return nullptr;
   }
@@ -123,16 +123,16 @@ cinsn_t *idalib_hexrays_eamap_result_next(eamap_result &r) {
 }
 
 /// Reset the iterator to the beginning
-void idalib_hexrays_eamap_result_reset(eamap_result &r) { r.index = 0; }
+inline void idalib_hexrays_eamap_result_reset(eamap_result &r) { r.index = 0; }
 
 /// Get the address (ea) of a cinsn_t
-ea_t idalib_hexrays_cinsn_ea(const cinsn_t *insn) { return insn->ea; }
+inline ea_t idalib_hexrays_cinsn_ea(const cinsn_t *insn) { return insn->ea; }
 
 /// Get the opcode of a cinsn_t (cit_* constants)
-int idalib_hexrays_cinsn_op(const cinsn_t *insn) { return insn->op; }
+inline int idalib_hexrays_cinsn_op(const cinsn_t *insn) { return insn->op; }
 
 /// Print a single ctree item (cinsn_t or cexpr_t) as text
-rust::String idalib_hexrays_citem_print(const citem_t *item,
+inline rust::String idalib_hexrays_citem_print(const citem_t *item,
                                         const cfunc_t *func) {
   qstring buf;
   // Use print1 to get the text representation
@@ -144,7 +144,7 @@ rust::String idalib_hexrays_citem_print(const citem_t *item,
 }
 
 /// Print a statement with context (includes nested expressions)
-rust::String idalib_hexrays_cinsn_print(const cinsn_t *insn,
+inline rust::String idalib_hexrays_cinsn_print(const cinsn_t *insn,
                                         const cfunc_t *func) {
   return idalib_hexrays_citem_print(static_cast<const citem_t *>(insn), func);
 }
@@ -165,7 +165,7 @@ struct addr_range final {
 #endif // CXXBRIDGE1_STRUCT_addr_range
 
 /// Get the address range covered by a statement. Returns false if not found.
-bool idalib_hexrays_cfunc_get_stmt_bounds(cfunc_t *f, const cinsn_t *insn,
+inline bool idalib_hexrays_cfunc_get_stmt_bounds(cfunc_t *f, const cinsn_t *insn,
                                           addr_range *out) {
   boundaries_t &bounds = f->get_boundaries();
   auto it = boundaries_find(&bounds, insn);

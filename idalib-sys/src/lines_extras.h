@@ -7,7 +7,7 @@
 
 /// Generate a disassembly line at the given address, with IDA color codes stripped.
 /// Returns an empty string if the address is invalid or no disassembly is available.
-rust::String idalib_generate_disasm_line(ea_t ea) {
+inline rust::String idalib_generate_disasm_line(ea_t ea) {
   qstring buf;
 
   // GENDSM_FORCE_CODE = 0x0001 - generate code even if the address contains data

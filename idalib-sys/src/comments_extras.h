@@ -4,7 +4,7 @@
 
 #include "cxx.h"
 
-rust::String idalib_get_cmt(ea_t ea, bool rptble) {
+inline rust::String idalib_get_cmt(ea_t ea, bool rptble) {
   auto cmt = qstring();
 
   if (get_cmt(&cmt, ea, rptble) != 0) {

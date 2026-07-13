@@ -134,10 +134,6 @@ fn main() {
 
         b.compile("libida-stubs");
     } else if os == "windows" {
-        // Note: MSVC linker may report LNK2005 duplicate symbol errors due to
-        // cxx-generated wrappers conflicting with manual implementations.
-        // This is worked around with /FORCE:MULTIPLE linker flag.
-        println!("cargo::rustc-link-arg=/FORCE:MULTIPLE");
         builder
             .cargo_warnings(false)
             .warnings(false)

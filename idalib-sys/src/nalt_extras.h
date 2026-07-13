@@ -5,7 +5,7 @@
 
 #include "cxx.h"
 
-rust::String idalib_get_input_file_path() {
+inline rust::String idalib_get_input_file_path() {
   char path[QMAXPATH] = {0};
   auto size = get_input_file_path(path, sizeof(path));
 
