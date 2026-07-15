@@ -123,6 +123,8 @@ include_cpp! {
 
     // funcs
     generate!("func_t")
+    // The Windows ARM64 IDA runtime does not export this unused comparison method.
+    block!("func_t::compare")
     generate!("lock_func")
     generate!("get_func")
     generate!("get_func_num")
@@ -240,6 +242,8 @@ include_cpp! {
 
     // segment
     generate!("segment_t")
+    // The Windows ARM64 IDA runtime does not export this unused comparison method.
+    block!("segment_t::compare")
     generate!("lock_segment")
     generate!("getseg")
     generate!("getnseg")
