@@ -62,7 +62,7 @@ include_cpp! {
     #include "auto.hpp"
     #include "bytes.hpp"
     #include "entry.hpp"
-    #include "funcs.hpp"
+    #include "funcs_no_comparisons.hpp"
     #include "gdl.hpp"
     #include "hexrays.hpp"
     #include "ida.hpp"
@@ -73,7 +73,7 @@ include_cpp! {
     #include "nalt.hpp"
     #include "name.hpp"
     #include "pro.h"
-    #include "segment.hpp"
+    #include "segment_no_comparisons.hpp"
     #include "strlist.hpp"
     #include "ua.hpp"
     #include "xref.hpp"
@@ -123,8 +123,6 @@ include_cpp! {
 
     // funcs
     generate!("func_t")
-    // The Windows ARM64 IDA runtime does not export this unused comparison method.
-    block!("func_t::compare")
     generate!("lock_func")
     generate!("get_func")
     generate!("get_func_num")
@@ -242,8 +240,6 @@ include_cpp! {
 
     // segment
     generate!("segment_t")
-    // The Windows ARM64 IDA runtime does not export this unused comparison method.
-    block!("segment_t::compare")
     generate!("lock_segment")
     generate!("getseg")
     generate!("getnseg")
