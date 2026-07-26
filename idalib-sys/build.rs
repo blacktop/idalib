@@ -41,7 +41,12 @@ fn platform_clang_args() -> Vec<&'static str> {
     } else if os == "macos" {
         vec!["-std=c++17", "-D__MACOS__=1", "-D__EA64__=1"]
     } else if os == "windows" {
-        vec!["-std=c++17", "-D__NT__=1", "-D__EA64__=1"]
+        vec![
+            "-std=c++17",
+            "-D__NT__=1",
+            "-D__EA64__=1",
+            "-D_CRT_USE_BUILTIN_OFFSETOF",
+        ]
     } else {
         panic!("unsupported platform: {}", os)
     };
