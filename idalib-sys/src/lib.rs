@@ -711,6 +711,10 @@ pub mod registry {
     pub use crate::ffix::{idalib_reg_read_bool, idalib_reg_write_bool};
 }
 
+pub mod lumina {
+    pub use crate::ffix::{idalib_lumina_pull, lumina_pull_result};
+}
+
 pub mod pod {
     #![allow(non_camel_case_types)]
     #![allow(non_upper_case_globals)]
@@ -950,6 +954,19 @@ mod ffix {
         context: String,
     }
 
+    #[derive(Debug, Clone, Default)]
+    struct lumina_pull_result {
+        code: i32,
+        name: String,
+        size: u32,
+        frequency: u32,
+        score: u32,
+        metadata_mask: u32,
+        applied: bool,
+        backup_created: bool,
+        error: String,
+    }
+
     unsafe extern "C++" {
         include!("autocxxgen_ffi.h");
         include!("idalib.hpp");
@@ -966,6 +983,7 @@ mod ffix {
         include!("inf_extras.h");
         include!("kernwin_extras.h");
         include!("loader_extras.h");
+        include!("lumina_extras.h");
         include!("nalt_extras.h");
         include!("ph_extras.h");
         include!("registry_extras.h");
@@ -1022,6 +1040,12 @@ mod ffix {
         unsafe fn idalib_load_dbg_dbginfo(path: *const c_char, verbose: bool) -> bool;
         unsafe fn idalib_reg_read_bool(name: *const c_char, default_value: bool) -> bool;
         unsafe fn idalib_reg_write_bool(name: *const c_char, value: bool);
+        unsafe fn idalib_lumina_pull(
+            ea: u64,
+            apply: bool,
+            force: bool,
+            out: &mut lumina_pull_result,
+        ) -> bool;
 
         unsafe fn idalib_get_local_type(ordinal: c_uint, out: &mut local_type_info) -> bool;
         unsafe fn idalib_get_frame_info(ea: u64, out: &mut frame_info) -> bool;

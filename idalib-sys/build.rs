@@ -95,6 +95,7 @@ fn main() {
     builder.file(ffi_path.join("frame_extras.cc"));
     builder.file(ffi_path.join("expr_extras.cc"));
     builder.file(ffi_path.join("dscu_extras.cc"));
+    builder.file(ffi_path.join("lumina_extras.cc"));
 
     let os = target_os();
     let arch = target_arch();

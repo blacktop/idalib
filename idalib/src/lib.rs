@@ -85,6 +85,7 @@ pub mod func;
 pub mod idb;
 pub mod insn;
 pub mod license;
+pub mod lumina;
 pub mod meta;
 pub mod name;
 pub mod plugin;
