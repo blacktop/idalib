@@ -707,6 +707,10 @@ pub mod auto_analysis {
     pub use super::ffix::{idalib_auto_is_ok, idalib_get_auto_state};
 }
 
+pub mod registry {
+    pub use crate::ffix::{idalib_reg_read_bool, idalib_reg_write_bool};
+}
+
 pub mod pod {
     #![allow(non_camel_case_types)]
     #![allow(non_upper_case_globals)]
@@ -964,6 +968,7 @@ mod ffix {
         include!("loader_extras.h");
         include!("nalt_extras.h");
         include!("ph_extras.h");
+        include!("registry_extras.h");
         include!("segm_extras.h");
         include!("search_extras.h");
         include!("strings_extras.h");
@@ -1015,6 +1020,8 @@ mod ffix {
         unsafe fn idalib_license_end_date() -> i64;
         unsafe fn idalib_get_license_id(id: &mut [u8; 6]) -> bool;
         unsafe fn idalib_load_dbg_dbginfo(path: *const c_char, verbose: bool) -> bool;
+        unsafe fn idalib_reg_read_bool(name: *const c_char, default_value: bool) -> bool;
+        unsafe fn idalib_reg_write_bool(name: *const c_char, value: bool);
 
         unsafe fn idalib_get_local_type(ordinal: c_uint, out: &mut local_type_info) -> bool;
         unsafe fn idalib_get_frame_info(ea: u64, out: &mut frame_info) -> bool;

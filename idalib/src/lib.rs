@@ -89,6 +89,7 @@ pub mod meta;
 pub mod name;
 pub mod plugin;
 pub mod processor;
+pub mod registry;
 pub mod script;
 pub mod segment;
 pub mod strings;
