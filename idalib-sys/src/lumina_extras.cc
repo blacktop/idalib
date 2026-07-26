@@ -7,11 +7,6 @@
 
 namespace {
 
-class server_connection_guard_t {
-public:
-  ~server_connection_guard_t() { close_server_connection(); }
-};
-
 void set_error(lumina_pull_result &out, const qstring &error) {
   out.error = rust::String(error.c_str());
 }
@@ -30,8 +25,6 @@ bool idalib_lumina_pull(
     out.error = rust::String("Lumina server connection is unavailable");
     return false;
   }
-  server_connection_guard_t connection_guard;
-
   eavec_t functions;
   functions.push_back(static_cast<ea_t>(ea));
   qstring error;
