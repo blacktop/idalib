@@ -2,6 +2,9 @@
 
 #include "debugger_extras.h"
 
+#include <algorithm>
+#include <chrono>
+#include <limits>
 #include <string>
 
 namespace {
@@ -37,6 +40,53 @@ bool wait_for_debug_event(std::int32_t wait_flags,
   return false;
 }
 
+bool wait_for_terminal_debug_event(std::int32_t terminal_event,
+                                   std::int32_t timeout_seconds,
+                                   std::int32_t &event_code,
+                                   rust::String &error) {
+  if (timeout_seconds < 0) {
+    error = rust::String("debugger timeout must be non-negative");
+    return false;
+  }
+
+  const auto deadline = std::chrono::steady_clock::now() +
+                        std::chrono::seconds(timeout_seconds);
+  bool first_wait = true;
+  for (;;) {
+    const auto now = std::chrono::steady_clock::now();
+    if (!first_wait && now >= deadline) {
+      error = rust::String("timed out waiting for debugger teardown");
+      return false;
+    }
+
+    const auto remaining =
+        std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now)
+            .count();
+    const auto rounded_seconds = remaining <= 0 ? 0 : (remaining + 999) / 1000;
+    const auto bounded_seconds =
+        std::min<std::int64_t>(rounded_seconds,
+                               std::numeric_limits<std::int32_t>::max());
+    const int result = static_cast<int>(wait_for_next_event(
+        WFNE_ANY | WFNE_SILENT, static_cast<int>(bounded_seconds)));
+    first_wait = false;
+    event_code = result;
+
+    if (result == terminal_event || result == DEC_NOTASK ||
+        get_process_state() == DSTATE_NOTASK) {
+      return true;
+    }
+    if (result > 0) {
+      continue;
+    }
+    if (result == DEC_TIMEOUT) {
+      error = rust::String("timed out waiting for debugger teardown");
+    } else {
+      error = rust::String("debugger teardown event wait failed");
+    }
+    return false;
+  }
+}
+
 } // namespace
 
 bool idalib_debugger_load(rust::Str name, bool use_remote, rust::Str host,
@@ -58,7 +108,9 @@ bool idalib_debugger_load(rust::Str name, bool use_remote, rust::Str host,
   if (use_remote) {
     set_remote_debugger(remote_host.c_str(), nullptr, port);
   }
-  set_debugger_options(DOPT_ENTRY_BPT | DOPT_LIB_MSGS);
+  const uint required_options = DOPT_ENTRY_BPT | DOPT_LIB_MSGS;
+  const uint previous_options = set_debugger_options(required_options);
+  set_debugger_options(previous_options | required_options);
   return true;
 }
 
@@ -125,7 +177,8 @@ bool idalib_debugger_detach(std::int32_t timeout_seconds,
     error = rust::String("debugger could not detach from process");
     return false;
   }
-  return wait_for_debug_event(WFNE_ANY, timeout_seconds, event_code, error);
+  return wait_for_terminal_debug_event(PROCESS_DETACHED, timeout_seconds,
+                                       event_code, error);
 }
 
 bool idalib_debugger_terminate(std::int32_t timeout_seconds,
@@ -135,7 +188,8 @@ bool idalib_debugger_terminate(std::int32_t timeout_seconds,
     error = rust::String("debugger could not terminate process");
     return false;
   }
-  return wait_for_debug_event(WFNE_ANY, timeout_seconds, event_code, error);
+  return wait_for_terminal_debug_event(PROCESS_EXITED, timeout_seconds,
+                                       event_code, error);
 }
 
 std::int32_t idalib_debugger_process_state() { return get_process_state(); }
