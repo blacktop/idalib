@@ -2,6 +2,11 @@
 #![allow(clippy::missing_safety_doc)]
 #![allow(clippy::identity_op)]
 #![allow(clippy::needless_lifetimes)]
+// autocxx preserves libc's public `FILE` spelling in generated Linux bindings.
+#![cfg_attr(
+    target_os = "linux",
+    expect(clippy::upper_case_acronyms, reason = "generated C API name")
+)]
 #![allow(unsafe_op_in_unsafe_fn)]
 
 use std::path::PathBuf;

@@ -17,8 +17,7 @@ const char *nullable(const std::string &value) {
   return value.empty() ? nullptr : value.c_str();
 }
 
-bool wait_for_debug_event(std::int32_t wait_flags,
-                          std::int32_t timeout_seconds,
+bool wait_for_debug_event(std::int32_t wait_flags, std::int32_t timeout_seconds,
                           std::int32_t &event_code, rust::String &error) {
   if (timeout_seconds < 0) {
     error = rust::String("debugger timeout must be non-negative");
@@ -40,6 +39,41 @@ bool wait_for_debug_event(std::int32_t wait_flags,
   return false;
 }
 
+enum class terminal_wait_outcome {
+  matched,
+  pending,
+  timeout,
+  no_task,
+  failed,
+};
+
+constexpr terminal_wait_outcome
+classify_terminal_wait(int result, int terminal_event, int process_state) {
+  if (result == terminal_event) {
+    return terminal_wait_outcome::matched;
+  }
+  if (result > 0) {
+    return terminal_wait_outcome::pending;
+  }
+  if (result == DEC_TIMEOUT) {
+    return terminal_wait_outcome::timeout;
+  }
+  if (result == DEC_NOTASK || process_state == DSTATE_NOTASK) {
+    return terminal_wait_outcome::no_task;
+  }
+  return terminal_wait_outcome::failed;
+}
+
+static_assert(classify_terminal_wait(DEC_ERROR, PROCESS_EXITED,
+                                     DSTATE_NOTASK) ==
+              terminal_wait_outcome::no_task);
+static_assert(classify_terminal_wait(PROCESS_EXITED, PROCESS_EXITED,
+                                     DSTATE_NOTASK) ==
+              terminal_wait_outcome::matched);
+static_assert(classify_terminal_wait(THREAD_EXITED, PROCESS_EXITED,
+                                     DSTATE_NOTASK) ==
+              terminal_wait_outcome::pending);
+
 bool wait_for_terminal_debug_event(std::int32_t terminal_event,
                                    std::int32_t timeout_seconds,
                                    std::int32_t &event_code,
@@ -49,8 +83,8 @@ bool wait_for_terminal_debug_event(std::int32_t terminal_event,
     return false;
   }
 
-  const auto deadline = std::chrono::steady_clock::now() +
-                        std::chrono::seconds(timeout_seconds);
+  const auto deadline =
+      std::chrono::steady_clock::now() + std::chrono::seconds(timeout_seconds);
   bool first_wait = true;
   for (;;) {
     const auto now = std::chrono::steady_clock::now();
@@ -63,27 +97,30 @@ bool wait_for_terminal_debug_event(std::int32_t terminal_event,
         std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now)
             .count();
     const auto rounded_seconds = remaining <= 0 ? 0 : (remaining + 999) / 1000;
-    const auto bounded_seconds =
-        std::min<std::int64_t>(rounded_seconds,
-                               std::numeric_limits<std::int32_t>::max());
+    const auto bounded_seconds = std::min<std::int64_t>(
+        rounded_seconds, std::numeric_limits<std::int32_t>::max());
     const int result = static_cast<int>(wait_for_next_event(
         WFNE_ANY | WFNE_SILENT, static_cast<int>(bounded_seconds)));
     first_wait = false;
     event_code = result;
 
-    if (result == terminal_event || result == DEC_NOTASK ||
-        get_process_state() == DSTATE_NOTASK) {
+    switch (
+        classify_terminal_wait(result, terminal_event, get_process_state())) {
+    case terminal_wait_outcome::matched:
       return true;
-    }
-    if (result > 0) {
+    case terminal_wait_outcome::pending:
       continue;
-    }
-    if (result == DEC_TIMEOUT) {
+    case terminal_wait_outcome::timeout:
       error = rust::String("timed out waiting for debugger teardown");
-    } else {
+      return false;
+    case terminal_wait_outcome::no_task:
+      error = rust::String("debugger became inactive before the requested "
+                           "terminal event was observed");
+      return false;
+    case terminal_wait_outcome::failed:
       error = rust::String("debugger teardown event wait failed");
+      return false;
     }
-    return false;
   }
 }
 
@@ -182,8 +219,7 @@ bool idalib_debugger_detach(std::int32_t timeout_seconds,
 }
 
 bool idalib_debugger_terminate(std::int32_t timeout_seconds,
-                               std::int32_t &event_code,
-                               rust::String &error) {
+                               std::int32_t &event_code, rust::String &error) {
   if (!exit_process()) {
     error = rust::String("debugger could not terminate process");
     return false;

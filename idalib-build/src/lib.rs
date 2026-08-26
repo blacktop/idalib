@@ -151,6 +151,14 @@ fn configure_linkage_aux(path: &Path) {
         // .dylib/.so
         println!("cargo::rustc-link-lib=dylib=ida");
         println!("cargo::rustc-link-lib=dylib=idalib");
+        if os == "linux" {
+            // GNU ld drops these libraries under --as-needed when rustc places
+            // them before the transitive idalib-sys archive that uses them.
+            println!("cargo::rustc-link-arg=-Wl,--no-as-needed");
+            println!("cargo::rustc-link-arg=-lida");
+            println!("cargo::rustc-link-arg=-lidalib");
+            println!("cargo::rustc-link-arg=-Wl,--as-needed");
+        }
     }
 }
 

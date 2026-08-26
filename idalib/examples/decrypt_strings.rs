@@ -78,8 +78,9 @@ fn handle_xref(idb: &IDB, xref: &XRef) -> Option<EncString> {
         if insn.is_basic_block_end(true) {
             break;
         }
+        let itype = u32::from(insn.itype());
 
-        if insn.itype() == NN_lea
+        if itype == NN_lea as u32
             && insn.operand_count() > 1
             && insn.operand(0)?.type_() == OperandType::Reg
         {
@@ -92,7 +93,7 @@ fn handle_xref(idb: &IDB, xref: &XRef) -> Option<EncString> {
             }
         }
 
-        if insn.itype() == NN_mov
+        if itype == NN_mov as u32
             && insn.operand_count() > 1
             && insn.operand(0)?.type_() == OperandType::Reg
         {
