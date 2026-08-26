@@ -33,6 +33,10 @@ inline void idalib_inf_set_app_bitness(std::uint32_t bitness) {
   inf_set_app_bitness(bitness);
 }
 
+inline bool idalib_inf_set_start_ea(std::uint64_t address) {
+  return inf_set_start_ea(address);
+}
+
 inline bool idalib_inf_decode_fpp() { return inf_decode_fpp(); }
 
 inline bool idalib_inf_is_32bit_or_higher() { return inf_is_32bit_or_higher(); }

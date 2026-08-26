@@ -887,4 +887,9 @@ impl<'a> MetadataMut<'a> {
     pub fn set_app_bitness(&mut self, bitness: Bitness) {
         unsafe { idalib_inf_set_app_bitness(bitness.bits()) }
     }
+
+    /// Set the database's linear program entry-point address.
+    pub fn set_start_address(&mut self, address: Address) -> bool {
+        unsafe { idalib_inf_set_start_ea(address) }
+    }
 }
