@@ -29,6 +29,10 @@ inline bool idalib_inf_is_graph_view() { return inf_is_graph_view(); }
 
 inline std::uint32_t idalib_inf_get_lflags() { return inf_get_lflags(); }
 
+inline void idalib_inf_set_app_bitness(std::uint32_t bitness) {
+  inf_set_app_bitness(bitness);
+}
+
 inline bool idalib_inf_decode_fpp() { return inf_decode_fpp(); }
 
 inline bool idalib_inf_is_32bit_or_higher() { return inf_is_32bit_or_higher(); }

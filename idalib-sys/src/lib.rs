@@ -685,19 +685,19 @@ pub mod inf {
         idalib_inf_pack_stkargs, idalib_inf_prefix_show_funcoff, idalib_inf_prefix_show_segaddr,
         idalib_inf_prefix_show_stack, idalib_inf_prefix_truncate_opcode_bytes,
         idalib_inf_propagate_regargs, idalib_inf_propagate_stkargs, idalib_inf_readonly_idb,
-        idalib_inf_rename_jumpfunc, idalib_inf_rename_nullsub, idalib_inf_set_show_all_comments,
-        idalib_inf_set_show_hidden_funcs, idalib_inf_set_show_hidden_insns,
-        idalib_inf_set_show_hidden_segms, idalib_inf_should_create_stkvars,
-        idalib_inf_should_trace_sp, idalib_inf_show_all_comments, idalib_inf_show_auto,
-        idalib_inf_show_hidden_funcs, idalib_inf_show_hidden_insns, idalib_inf_show_hidden_segms,
-        idalib_inf_show_line_pref, idalib_inf_show_repeatables, idalib_inf_show_src_linnum,
-        idalib_inf_show_void, idalib_inf_show_xref_fncoff, idalib_inf_show_xref_seg,
-        idalib_inf_show_xref_tmarks, idalib_inf_show_xref_val, idalib_inf_stack_ldbl,
-        idalib_inf_stack_varargs, idalib_inf_strlit_autocmt, idalib_inf_strlit_name_bit,
-        idalib_inf_strlit_names, idalib_inf_strlit_savecase, idalib_inf_strlit_serial_names,
-        idalib_inf_test_mode, idalib_inf_trace_flow, idalib_inf_truncate_on_del,
-        idalib_inf_unicode_strlits, idalib_inf_use_allasm, idalib_inf_use_flirt,
-        idalib_inf_use_gcc_layout,
+        idalib_inf_rename_jumpfunc, idalib_inf_rename_nullsub, idalib_inf_set_app_bitness,
+        idalib_inf_set_show_all_comments, idalib_inf_set_show_hidden_funcs,
+        idalib_inf_set_show_hidden_insns, idalib_inf_set_show_hidden_segms,
+        idalib_inf_should_create_stkvars, idalib_inf_should_trace_sp, idalib_inf_show_all_comments,
+        idalib_inf_show_auto, idalib_inf_show_hidden_funcs, idalib_inf_show_hidden_insns,
+        idalib_inf_show_hidden_segms, idalib_inf_show_line_pref, idalib_inf_show_repeatables,
+        idalib_inf_show_src_linnum, idalib_inf_show_void, idalib_inf_show_xref_fncoff,
+        idalib_inf_show_xref_seg, idalib_inf_show_xref_tmarks, idalib_inf_show_xref_val,
+        idalib_inf_stack_ldbl, idalib_inf_stack_varargs, idalib_inf_strlit_autocmt,
+        idalib_inf_strlit_name_bit, idalib_inf_strlit_names, idalib_inf_strlit_savecase,
+        idalib_inf_strlit_serial_names, idalib_inf_test_mode, idalib_inf_trace_flow,
+        idalib_inf_truncate_on_del, idalib_inf_unicode_strlits, idalib_inf_use_allasm,
+        idalib_inf_use_flirt, idalib_inf_use_gcc_layout,
     };
 }
 
@@ -1151,6 +1151,7 @@ mod ffix {
         unsafe fn idalib_inf_allow_non_matched_ops() -> bool;
         unsafe fn idalib_inf_is_graph_view() -> bool;
         unsafe fn idalib_inf_get_lflags() -> u32;
+        unsafe fn idalib_inf_set_app_bitness(bitness: u32);
         unsafe fn idalib_inf_decode_fpp() -> bool;
         unsafe fn idalib_inf_is_32bit_or_higher() -> bool;
         unsafe fn idalib_inf_is_32bit_exactly() -> bool;
@@ -1335,6 +1336,7 @@ mod ffix {
         unsafe fn idalib_segm_perm(s: *const segment_t) -> u8;
         unsafe fn idalib_segm_bitness(s: *const segment_t) -> u8;
         unsafe fn idalib_segm_type(s: *const segment_t) -> u8;
+        unsafe fn idalib_set_segment_addressing(ea: u64, bitness: usize) -> bool;
 
         unsafe fn idalib_get_cmt(ea: c_ulonglong, rptble: bool) -> String;
 
@@ -1566,7 +1568,7 @@ pub mod segment {
     };
     pub use super::ffix::{
         idalib_segm_align, idalib_segm_bitness, idalib_segm_bytes, idalib_segm_name,
-        idalib_segm_perm, idalib_segm_type,
+        idalib_segm_perm, idalib_segm_type, idalib_set_segment_addressing,
     };
 }
 

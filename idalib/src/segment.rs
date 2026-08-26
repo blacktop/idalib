@@ -10,6 +10,29 @@ use crate::ffi::range_t;
 use crate::ffi::segment::*;
 use crate::idb::IDB;
 
+/// Application/segment address width understood by IDA.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(u32)]
+pub enum Bitness {
+    Bits16 = 16,
+    Bits32 = 32,
+    Bits64 = 64,
+}
+
+impl Bitness {
+    pub const fn bits(self) -> u32 {
+        self as u32
+    }
+
+    const fn segment_addressing(self) -> usize {
+        match self {
+            Self::Bits16 => 0,
+            Self::Bits32 => 1,
+            Self::Bits64 => 2,
+        }
+    }
+}
+
 pub struct Segment<'a> {
     ptr: *mut segment_t,
     _lock: Pin<Box<lock_segment>>,
@@ -261,6 +284,14 @@ impl<'a> Segment<'a> {
 
     pub fn bitness(&self) -> usize {
         (unsafe { idalib_segm_bitness(self.ptr) }) as usize
+    }
+
+    /// Change this segment's address width using IDA's supported mutation API.
+    ///
+    /// IDA invalidates analyzed items in the segment when the width changes,
+    /// so callers should configure raw inputs before running auto-analysis.
+    pub fn set_bitness(&mut self, bitness: Bitness) -> bool {
+        unsafe { idalib_set_segment_addressing(self.start_address(), bitness.segment_addressing()) }
     }
 
     pub fn r#type(&self) -> SegmentType {

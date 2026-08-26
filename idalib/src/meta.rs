@@ -9,6 +9,7 @@ use crate::ffi::auto_analysis::*;
 use crate::ffi::inf::*;
 use crate::ffi::nalt::*;
 use crate::idb::IDB;
+use crate::segment::Bitness;
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -877,5 +878,13 @@ impl<'a> MetadataMut<'a> {
 
     pub fn set_show_hidden_segms(&mut self) -> bool {
         unsafe { idalib_inf_set_show_hidden_segms() }
+    }
+
+    /// Set the database-wide application address width.
+    ///
+    /// Segment widths are separate in IDA; callers configuring a raw input
+    /// should also update each segment through [`crate::segment::Segment::set_bitness`].
+    pub fn set_app_bitness(&mut self, bitness: Bitness) {
+        unsafe { idalib_inf_set_app_bitness(bitness.bits()) }
     }
 }

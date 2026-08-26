@@ -53,6 +53,9 @@ pub struct IDB {
 pub struct IDBOpenOptions {
     idb: Option<PathBuf>,
     ftype: Option<String>,
+    processor: Option<String>,
+    base_address: Option<Address>,
+    entry_point: Option<Address>,
     extra_args: Vec<String>,
 
     save: bool,
@@ -64,6 +67,9 @@ impl Default for IDBOpenOptions {
         Self {
             idb: None,
             ftype: None,
+            processor: None,
+            base_address: None,
+            entry_point: None,
             extra_args: Vec::new(),
             save: false,
             auto_analyse: true,
@@ -91,6 +97,32 @@ impl IDBOpenOptions {
         self
     }
 
+    /// Select the IDA processor module/variant used while loading a raw input.
+    pub fn processor(&mut self, processor: impl AsRef<str>) -> &mut Self {
+        self.processor = Some(processor.as_ref().to_owned());
+        self
+    }
+
+    /// Set a raw input's byte load address.
+    ///
+    /// IDA's `-b` loader option is expressed in 16-byte paragraphs, so the
+    /// byte address must be paragraph-aligned.
+    pub fn base_address(&mut self, address: Address) -> Result<&mut Self, IDAError> {
+        if address & 0xf != 0 {
+            return Err(IDAError::ffi_with(format!(
+                "raw input base address {address:#x} must be 16-byte aligned"
+            )));
+        }
+        self.base_address = Some(address);
+        Ok(self)
+    }
+
+    /// Set a raw input's initial entry-point address.
+    pub fn entry_point(&mut self, address: Address) -> &mut Self {
+        self.entry_point = Some(address);
+        self
+    }
+
     pub fn auto_analyse(&mut self, auto_analyse: bool) -> &mut Self {
         self.auto_analyse = auto_analyse;
         self
@@ -105,7 +137,7 @@ impl IDBOpenOptions {
         self
     }
 
-    pub fn open(&self, path: impl AsRef<Path>) -> Result<IDB, IDAError> {
+    fn init_args(&self) -> Vec<String> {
         let mut args = Vec::new();
 
         if let Some(ftype) = self.ftype.as_ref() {
@@ -117,7 +149,25 @@ impl IDBOpenOptions {
             args.push(format!("-o{}", idb_path.display()));
         }
 
+        if let Some(processor) = self.processor.as_ref() {
+            args.push(format!("-p{processor}"));
+        }
+
+        if let Some(base_address) = self.base_address {
+            args.push(format!("-b{:x}", base_address >> 4));
+        }
+
+        if let Some(entry_point) = self.entry_point {
+            args.push(format!("-i{entry_point:x}"));
+        }
+
         args.extend(self.extra_args.iter().cloned());
+
+        args
+    }
+
+    pub fn open(&self, path: impl AsRef<Path>) -> Result<IDB, IDAError> {
+        let args = self.init_args();
 
         IDB::open_full_with(path, self.auto_analyse, self.save, &args)
     }
@@ -801,5 +851,35 @@ impl<'a> Iterator for EntryPointIter<'a> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let lim = self.limit - self.index;
         (0, Some(lim))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::idb::IDBOpenOptions;
+
+    #[test]
+    fn raw_target_options_build_typed_loader_arguments() {
+        let mut options = IDBOpenOptions::new();
+        options.processor("arm:ARMv7-M").entry_point(0x0800_0100);
+        options.base_address(0x0800_0000).expect("aligned address");
+
+        assert_eq!(
+            options.init_args(),
+            vec![
+                "-parm:ARMv7-M".to_string(),
+                "-b800000".to_string(),
+                "-i8000100".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn raw_target_base_address_rejects_unaligned_bytes() {
+        let mut options = IDBOpenOptions::new();
+        let error = options
+            .base_address(0x1003)
+            .expect_err("unaligned address must be rejected");
+        assert!(error.to_string().contains("16-byte aligned"));
     }
 }

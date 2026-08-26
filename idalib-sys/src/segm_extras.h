@@ -43,3 +43,8 @@ inline std::uint8_t idalib_segm_perm(const segment_t *s) {
 inline std::uint8_t idalib_segm_type(const segment_t *s) {
   return s->type;
 }
+
+inline bool idalib_set_segment_addressing(std::uint64_t ea,
+                                           std::size_t bitness) {
+  return set_segment_addressing(ea, bitness);
+}
