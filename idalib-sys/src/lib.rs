@@ -918,6 +918,14 @@ mod ffix {
     }
 
     #[derive(Debug, Clone, Default)]
+    struct patched_byte_info {
+        address: u64,
+        file_offset: i64,
+        original_value: u64,
+        patched_value: u64,
+    }
+
+    #[derive(Debug, Clone, Default)]
     struct dscu_image_info {
         index: i32,
         name: String,
@@ -1366,6 +1374,11 @@ mod ffix {
         unsafe fn idalib_get_qword(ea: c_ulonglong) -> u64;
         unsafe fn idalib_get_bytes(ea: c_ulonglong, buf: &mut Vec<u8>) -> Result<usize>;
         unsafe fn idalib_patch_bytes(ea: c_ulonglong, buf: &mut Vec<u8>) -> bool;
+        unsafe fn idalib_visit_patched_bytes(
+            start: c_ulonglong,
+            end: c_ulonglong,
+            out: &mut Vec<patched_byte_info>,
+        ) -> bool;
         unsafe fn idalib_assemble_line(
             ea: c_ulonglong,
             line: *const c_char,
@@ -1576,7 +1589,7 @@ pub mod bytes {
     pub use super::ffi::{flags64_t, get_flags, is_code, is_data};
     pub use super::ffix::{
         idalib_get_byte, idalib_get_bytes, idalib_get_dword, idalib_get_qword, idalib_get_word,
-        idalib_patch_bytes,
+        idalib_patch_bytes, idalib_visit_patched_bytes, patched_byte_info,
     };
 }
 

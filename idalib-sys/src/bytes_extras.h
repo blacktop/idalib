@@ -4,6 +4,8 @@
 
 #include "cxx.h"
 
+struct patched_byte_info;
+
 inline std::uint8_t idalib_get_byte(ea_t ea) { return get_byte(ea); }
 inline std::uint16_t idalib_get_word(ea_t ea) { return get_word(ea); }
 inline std::uint32_t idalib_get_dword(ea_t ea) { return get_dword(ea); }
@@ -25,3 +27,6 @@ inline bool idalib_patch_bytes(ea_t ea, rust::Vec<rust::u8> &buf) {
   patch_bytes(ea, buf.data(), buf.size());
   return true;
 }
+
+bool idalib_visit_patched_bytes(ea_t start, ea_t end,
+                                rust::Vec<patched_byte_info> &out);

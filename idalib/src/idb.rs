@@ -49,6 +49,14 @@ pub struct IDB {
     _marker: PhantomData<*const ()>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PatchedByte {
+    pub address: Address,
+    pub file_offset: i64,
+    pub original_value: u64,
+    pub patched_value: u64,
+}
+
 #[derive(Debug, Clone)]
 pub struct IDBOpenOptions {
     idb: Option<PathBuf>,
@@ -783,6 +791,30 @@ impl IDB {
         }
 
         buf
+    }
+
+    pub fn patched_bytes(
+        &self,
+        start: Address,
+        end: Address,
+    ) -> Result<Vec<PatchedByte>, IDAError> {
+        let mut bytes = Vec::new();
+        let complete = unsafe { idalib_visit_patched_bytes(start.into(), end.into(), &mut bytes) };
+        if !complete {
+            return Err(IDAError::ffi_with(
+                "patched-byte enumeration stopped before completion",
+            ));
+        }
+
+        Ok(bytes
+            .into_iter()
+            .map(|byte| PatchedByte {
+                address: byte.address,
+                file_offset: byte.file_offset,
+                original_value: byte.original_value,
+                patched_value: byte.patched_value,
+            })
+            .collect())
     }
 
     pub fn find_plugin(

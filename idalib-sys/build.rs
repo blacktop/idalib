@@ -100,6 +100,7 @@ fn main() {
     builder.file(ffi_path.join("frame_extras.cc"));
     builder.file(ffi_path.join("expr_extras.cc"));
     builder.file(ffi_path.join("dscu_extras.cc"));
+    builder.file(ffi_path.join("bytes_extras.cc"));
     builder.file(ffi_path.join("lumina_extras.cc"));
 
     let os = target_os();
@@ -255,6 +256,7 @@ fn main() {
         "bytes_extras.h",
         "comments_extras.h",
         "dscu_extras.cc",
+        "bytes_extras.cc",
         "dscu_extras.h",
         "entry_extras.h",
         "expr_extras.cc",

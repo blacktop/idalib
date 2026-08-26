@@ -100,7 +100,7 @@ pub mod xref;
 
 pub use ffi::IDAError;
 pub use idalib_sys as ffi;
-pub use idb::{IDB, IDBOpenOptions};
+pub use idb::{IDB, IDBOpenOptions, PatchedByte};
 pub use license::{LicenseId, is_valid_license, license_end_date, license_id};
 
 pub type Address = u64;
