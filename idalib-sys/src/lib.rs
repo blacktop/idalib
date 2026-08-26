@@ -926,6 +926,14 @@ mod ffix {
     }
 
     #[derive(Debug, Clone, Default)]
+    struct debugger_module_info {
+        path: String,
+        base: u64,
+        size: u64,
+        rebase_to: u64,
+    }
+
+    #[derive(Debug, Clone, Default)]
     struct dscu_image_info {
         index: i32,
         name: String,
@@ -1004,6 +1012,7 @@ mod ffix {
         include!("frame_extras.h");
         include!("expr_extras.h");
         include!("dscu_extras.h");
+        include!("debugger_extras.h");
 
         type c_short = autocxx::c_short;
         type c_int = autocxx::c_int;
@@ -1379,6 +1388,43 @@ mod ffix {
             end: c_ulonglong,
             out: &mut Vec<patched_byte_info>,
         ) -> bool;
+
+        unsafe fn idalib_debugger_load(
+            name: &str,
+            use_remote: bool,
+            host: &str,
+            port: i32,
+            error: &mut String,
+        ) -> bool;
+        unsafe fn idalib_debugger_launch(
+            path: &str,
+            args: &str,
+            start_directory: &str,
+            timeout_seconds: i32,
+            event_code: &mut i32,
+            error: &mut String,
+        ) -> bool;
+        unsafe fn idalib_debugger_attach(
+            pid: i32,
+            timeout_seconds: i32,
+            event_code: &mut i32,
+            error: &mut String,
+        ) -> bool;
+        unsafe fn idalib_debugger_modules(
+            modules: &mut Vec<debugger_module_info>,
+            error: &mut String,
+        ) -> bool;
+        unsafe fn idalib_debugger_detach(
+            timeout_seconds: i32,
+            event_code: &mut i32,
+            error: &mut String,
+        ) -> bool;
+        unsafe fn idalib_debugger_terminate(
+            timeout_seconds: i32,
+            event_code: &mut i32,
+            error: &mut String,
+        ) -> bool;
+        unsafe fn idalib_debugger_process_state() -> i32;
         unsafe fn idalib_assemble_line(
             ea: c_ulonglong,
             line: *const c_char,
@@ -1688,6 +1734,14 @@ pub mod frame {
 
 pub mod script {
     pub use super::ffix::{idalib_run_python_snippet, script_result};
+}
+
+pub mod debugger {
+    pub use super::ffix::{
+        debugger_module_info, idalib_debugger_attach, idalib_debugger_detach,
+        idalib_debugger_launch, idalib_debugger_load, idalib_debugger_modules,
+        idalib_debugger_process_state, idalib_debugger_terminate,
+    };
 }
 
 pub mod dscu {

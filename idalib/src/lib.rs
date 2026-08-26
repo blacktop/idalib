@@ -78,6 +78,7 @@ use std::marker::PhantomData;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 pub mod bookmarks;
+pub mod debugger;
 pub mod decompiler;
 pub mod dscu;
 pub mod frame;

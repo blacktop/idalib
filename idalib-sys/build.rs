@@ -102,6 +102,7 @@ fn main() {
     builder.file(ffi_path.join("dscu_extras.cc"));
     builder.file(ffi_path.join("bytes_extras.cc"));
     builder.file(ffi_path.join("lumina_extras.cc"));
+    builder.file(ffi_path.join("debugger_extras.cc"));
 
     let os = target_os();
     let arch = target_arch();
@@ -258,6 +259,8 @@ fn main() {
         "dscu_extras.cc",
         "bytes_extras.cc",
         "dscu_extras.h",
+        "debugger_extras.cc",
+        "debugger_extras.h",
         "entry_extras.h",
         "expr_extras.cc",
         "expr_extras.h",

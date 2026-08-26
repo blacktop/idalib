@@ -1,0 +1,141 @@
+#include "cxxgen1.h"
+
+#include "debugger_extras.h"
+
+#include <string>
+
+namespace {
+
+std::string to_string(rust::Str value) {
+  return std::string(value.data(), value.size());
+}
+
+const char *nullable(const std::string &value) {
+  return value.empty() ? nullptr : value.c_str();
+}
+
+bool wait_for_debug_event(std::int32_t wait_flags,
+                          std::int32_t timeout_seconds,
+                          std::int32_t &event_code, rust::String &error) {
+  if (timeout_seconds < 0) {
+    error = rust::String("debugger timeout must be non-negative");
+    return false;
+  }
+  const int result = static_cast<int>(
+      wait_for_next_event(wait_flags | WFNE_SILENT, timeout_seconds));
+  event_code = result;
+  if (result > 0) {
+    return true;
+  }
+  if (result == DEC_TIMEOUT) {
+    error = rust::String("timed out waiting for debugger event");
+  } else if (result == DEC_NOTASK) {
+    error = rust::String("debugger reported no active process");
+  } else {
+    error = rust::String("debugger event wait failed");
+  }
+  return false;
+}
+
+} // namespace
+
+bool idalib_debugger_load(rust::Str name, bool use_remote, rust::Str host,
+                          std::int32_t port, rust::String &error) {
+  const std::string debugger_name = to_string(name);
+  const std::string remote_host = to_string(host);
+  if (debugger_name.empty()) {
+    error = rust::String("debugger name must not be empty");
+    return false;
+  }
+  if (use_remote && remote_host.empty()) {
+    error = rust::String("remote debugger host must not be empty");
+    return false;
+  }
+  if (!load_debugger(debugger_name.c_str(), use_remote)) {
+    error = rust::String("IDA could not load the requested debugger backend");
+    return false;
+  }
+  if (use_remote) {
+    set_remote_debugger(remote_host.c_str(), nullptr, port);
+  }
+  set_debugger_options(DOPT_ENTRY_BPT | DOPT_LIB_MSGS);
+  return true;
+}
+
+bool idalib_debugger_launch(rust::Str path, rust::Str args,
+                            rust::Str start_directory,
+                            std::int32_t timeout_seconds,
+                            std::int32_t &event_code, rust::String &error) {
+  const std::string executable = to_string(path);
+  const std::string arguments = to_string(args);
+  const std::string directory = to_string(start_directory);
+  if (executable.empty()) {
+    error = rust::String("debug executable path must not be empty");
+    return false;
+  }
+  const int result = start_process(executable.c_str(), nullable(arguments),
+                                   nullable(directory));
+  if (result != 1) {
+    error = rust::String(result == 0 ? "debug launch was cancelled"
+                                     : "debugger could not launch process");
+    event_code = result;
+    return false;
+  }
+  return wait_for_debug_event(WFNE_SUSP, timeout_seconds, event_code, error);
+}
+
+bool idalib_debugger_attach(std::int32_t pid, std::int32_t timeout_seconds,
+                            std::int32_t &event_code, rust::String &error) {
+  if (pid <= 0) {
+    error = rust::String("debug process ID must be positive");
+    return false;
+  }
+  const int result = attach_process(static_cast<pid_t>(pid), -1);
+  if (result != 1) {
+    error = rust::String("debugger could not attach to process");
+    event_code = result;
+    return false;
+  }
+  return wait_for_debug_event(WFNE_SUSP, timeout_seconds, event_code, error);
+}
+
+bool idalib_debugger_modules(rust::Vec<debugger_module_info> &modules,
+                             rust::String &error) {
+  if (get_process_state() == DSTATE_NOTASK) {
+    error = rust::String("no process is being debugged");
+    return false;
+  }
+
+  modinfo_t module;
+  for (bool found = get_first_module(&module); found;
+       found = get_next_module(&module)) {
+    debugger_module_info info;
+    info.path = rust::String(module.name.c_str());
+    info.base = static_cast<std::uint64_t>(module.base);
+    info.size = static_cast<std::uint64_t>(module.size);
+    info.rebase_to = static_cast<std::uint64_t>(module.rebase_to);
+    modules.push_back(std::move(info));
+  }
+  return true;
+}
+
+bool idalib_debugger_detach(std::int32_t timeout_seconds,
+                            std::int32_t &event_code, rust::String &error) {
+  if (!detach_process()) {
+    error = rust::String("debugger could not detach from process");
+    return false;
+  }
+  return wait_for_debug_event(WFNE_ANY, timeout_seconds, event_code, error);
+}
+
+bool idalib_debugger_terminate(std::int32_t timeout_seconds,
+                               std::int32_t &event_code,
+                               rust::String &error) {
+  if (!exit_process()) {
+    error = rust::String("debugger could not terminate process");
+    return false;
+  }
+  return wait_for_debug_event(WFNE_ANY, timeout_seconds, event_code, error);
+}
+
+std::int32_t idalib_debugger_process_state() { return get_process_state(); }
