@@ -418,8 +418,13 @@ impl<'a> Metadata<'a> {
     }
 
     pub fn base_address(&self) -> Option<Address> {
-        let ea = unsafe { idalib_inf_get_baseaddr() };
-        if ea != BADADDR { Some(ea.into()) } else { None }
+        let paragraph = unsafe { idalib_inf_get_baseaddr() };
+        if paragraph != BADADDR {
+            let address: Address = paragraph.into();
+            Some(address << 4)
+        } else {
+            None
+        }
     }
 
     pub fn start_stack_segment(&self) -> Option<Address> {

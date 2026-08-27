@@ -1051,11 +1051,6 @@ mod ffix {
 
         unsafe fn init_library(argc: c_int, argv: *mut *mut c_char) -> c_int;
 
-        unsafe fn idalib_open_database_quiet(
-            argc: c_int,
-            argv: *const *const c_char,
-            auto_analysis: bool,
-        ) -> c_int;
         unsafe fn idalib_check_license() -> bool;
         unsafe fn idalib_license_end_date() -> i64;
         unsafe fn idalib_get_license_id(id: &mut [u8; 6]) -> bool;
@@ -1343,6 +1338,7 @@ mod ffix {
         unsafe fn idalib_ph_id(ph: *const processor_t) -> i32;
         unsafe fn idalib_ph_short_name(ph: *const processor_t) -> String;
         unsafe fn idalib_ph_long_name(ph: *const processor_t) -> String;
+        unsafe fn idalib_set_processor_type(processor: *const c_char) -> bool;
         unsafe fn idalib_is_thumb_at(ph: *const processor_t, ea: c_ulonglong) -> bool;
 
         unsafe fn idalib_qflow_graph_getn_block(
@@ -1360,6 +1356,7 @@ mod ffix {
         unsafe fn idalib_segm_bitness(s: *const segment_t) -> u8;
         unsafe fn idalib_segm_type(s: *const segment_t) -> u8;
         unsafe fn idalib_set_segment_addressing(ea: u64, bitness: usize) -> bool;
+        unsafe fn idalib_rebase_program(new_base: u64) -> i32;
 
         unsafe fn idalib_get_cmt(ea: c_ulonglong, rptble: bool) -> String;
 
@@ -1441,6 +1438,7 @@ mod ffix {
 
         unsafe fn idalib_plugin_version(p: *const plugin_t) -> u64;
         unsafe fn idalib_plugin_flags(p: *const plugin_t) -> u64;
+        unsafe fn idalib_set_database_path(path: *const c_char) -> bool;
 
         unsafe fn idalib_get_library_version(
             major: *mut c_int,
@@ -1618,6 +1616,7 @@ pub mod processor {
     pub use super::ffi::{get_ph, processor_t};
     pub use super::ffix::{
         idalib_is_thumb_at, idalib_ph_id, idalib_ph_long_name, idalib_ph_short_name,
+        idalib_set_processor_type,
     };
     pub use super::idp as ids;
 }
@@ -1632,8 +1631,8 @@ pub mod segment {
         saRelQword, saRelWord, segment_t,
     };
     pub use super::ffix::{
-        idalib_segm_align, idalib_segm_bitness, idalib_segm_bytes, idalib_segm_name,
-        idalib_segm_perm, idalib_segm_type, idalib_set_segment_addressing,
+        idalib_rebase_program, idalib_segm_align, idalib_segm_bitness, idalib_segm_bytes,
+        idalib_segm_name, idalib_segm_perm, idalib_segm_type, idalib_set_segment_addressing,
     };
 }
 
@@ -1692,7 +1691,7 @@ pub mod strings {
 
 pub mod loader {
     pub use super::ffi::{find_plugin, plugin_t, run_plugin};
-    pub use super::ffix::{idalib_plugin_flags, idalib_plugin_version};
+    pub use super::ffix::{idalib_plugin_flags, idalib_plugin_version, idalib_set_database_path};
 
     pub mod flags {
         pub use super::super::ffi::{
@@ -1908,22 +1907,28 @@ pub mod ida {
             return Err(IDAError::InvalidLicense);
         }
 
-        let mut args = args
-            .iter()
-            .map(|s| CString::new(s.as_ref()).map_err(IDAError::ffi))
-            .collect::<Result<Vec<_>, _>>()?;
-
         let path = CString::new(path.as_ref().to_string_lossy().as_ref()).map_err(IDAError::ffi)?;
-        args.push(path);
-
-        let argv = std::iter::once(c"idalib".as_ptr())
-            .chain(args.iter().map(|s| s.as_ptr()))
+        let args = args
+            .iter()
+            .map(|arg| {
+                arg.as_ref().chars().fold(String::new(), |mut out, ch| {
+                    if ch == '\\' || ch == '"' || ch.is_whitespace() {
+                        out.push('\\');
+                    }
+                    out.push(ch);
+                    out
+                })
+            })
             .collect::<Vec<_>>();
-        let argc = argv.len();
-
-        let res = unsafe {
-            ffix::idalib_open_database_quiet(c_int(argc as _), argv.as_ptr(), auto_analysis)
+        let args = args.join(" ");
+        let args = CString::new(args).map_err(IDAError::ffi)?;
+        let args_ptr = if args.is_empty() {
+            std::ptr::null()
+        } else {
+            args.as_ptr()
         };
+
+        let res = unsafe { ffi::open_database(path.as_ptr(), auto_analysis, args_ptr) };
 
         if res != c_int(0) {
             Err(IDAError::OpenDb(res))

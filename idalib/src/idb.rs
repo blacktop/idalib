@@ -20,11 +20,11 @@ use crate::ffi::ida::{
 use crate::ffi::idp::idalib_assemble_line;
 use crate::ffi::insn::decode;
 use crate::ffi::lines::idalib_generate_disasm_line;
-use crate::ffi::loader::find_plugin;
+use crate::ffi::loader::{find_plugin, idalib_set_database_path};
 use crate::ffi::name::set_name;
-use crate::ffi::processor::get_ph;
+use crate::ffi::processor::{get_ph, idalib_set_processor_type};
 use crate::ffi::search::{idalib_find_defined, idalib_find_imm, idalib_find_text};
-use crate::ffi::segment::{get_segm_by_name, get_segm_qty, getnseg, getseg};
+use crate::ffi::segment::{get_segm_by_name, get_segm_qty, getnseg, getseg, idalib_rebase_program};
 use crate::ffi::util::{is_align_insn, next_head, prev_head, str2reg};
 use crate::ffi::xref::{xrefblk_t, xrefblk_t_first_from, xrefblk_t_first_to};
 use crate::func::{Function, FunctionId};
@@ -33,7 +33,7 @@ use crate::meta::{Metadata, MetadataMut};
 use crate::name::NameList;
 use crate::plugin::Plugin;
 use crate::processor::Processor;
-use crate::segment::{Segment, SegmentId};
+use crate::segment::{Bitness, Segment, SegmentId};
 use crate::strings::StringList;
 use crate::udt::{self, UdtInfo, UdtMember};
 use crate::xref::{XRef, XRefQuery};
@@ -62,6 +62,7 @@ pub struct IDBOpenOptions {
     idb: Option<PathBuf>,
     ftype: Option<String>,
     processor: Option<String>,
+    bitness: Option<Bitness>,
     base_address: Option<Address>,
     entry_point: Option<Address>,
     extra_args: Vec<String>,
@@ -76,6 +77,7 @@ impl Default for IDBOpenOptions {
             idb: None,
             ftype: None,
             processor: None,
+            bitness: None,
             base_address: None,
             entry_point: None,
             extra_args: Vec::new(),
@@ -111,10 +113,16 @@ impl IDBOpenOptions {
         self
     }
 
+    /// Select the address width applied to a newly loaded raw input.
+    pub fn bitness(&mut self, bitness: Bitness) -> &mut Self {
+        self.bitness = Some(bitness);
+        self
+    }
+
     /// Set a raw input's byte load address.
     ///
-    /// IDA's `-b` loader option is expressed in 16-byte paragraphs, so the
-    /// byte address must be paragraph-aligned.
+    /// IDA stores this value in 16-byte paragraphs, so the byte address must
+    /// be paragraph-aligned.
     pub fn base_address(&mut self, address: Address) -> Result<&mut Self, IDAError> {
         if address & 0xf != 0 {
             return Err(IDAError::ffi_with(format!(
@@ -136,7 +144,7 @@ impl IDBOpenOptions {
         self
     }
 
-    /// Add an extra CLI argument passed to `init_database`.
+    /// Add an extra CLI argument passed to IDALib's `open_database`.
     ///
     /// Use this for flags not covered by the typed builder methods,
     /// e.g. `-S"/path/to/script.py"` for an IDAPython startup script.
@@ -152,23 +160,6 @@ impl IDBOpenOptions {
             args.push(format!("-T{ftype}"));
         }
 
-        if let Some(idb_path) = self.idb.as_ref() {
-            args.push("-c".to_owned());
-            args.push(format!("-o{}", idb_path.display()));
-        }
-
-        if let Some(processor) = self.processor.as_ref() {
-            args.push(format!("-p{processor}"));
-        }
-
-        if let Some(base_address) = self.base_address {
-            args.push(format!("-b{:x}", base_address >> 4));
-        }
-
-        if let Some(entry_point) = self.entry_point {
-            args.push(format!("-i{entry_point:x}"));
-        }
-
         args.extend(self.extra_args.iter().cloned());
 
         args
@@ -177,7 +168,17 @@ impl IDBOpenOptions {
     pub fn open(&self, path: impl AsRef<Path>) -> Result<IDB, IDAError> {
         let args = self.init_args();
 
-        IDB::open_full_with(path, self.auto_analyse, self.save, &args)
+        IDB::open_full_with(
+            path,
+            self.auto_analyse,
+            self.save,
+            &args,
+            self.idb.as_deref(),
+            self.processor.as_deref(),
+            self.bitness,
+            self.base_address,
+            self.entry_point,
+        )
     }
 }
 
@@ -191,7 +192,17 @@ impl IDB {
         auto_analyse: bool,
         save: bool,
     ) -> Result<Self, IDAError> {
-        Self::open_full_with(path, auto_analyse, save, &[] as &[&str])
+        Self::open_full_with(
+            path,
+            auto_analyse,
+            save,
+            &[] as &[&str],
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
     }
 
     fn open_full_with(
@@ -199,6 +210,11 @@ impl IDB {
         auto_analyse: bool,
         save: bool,
         args: &[impl AsRef<str>],
+        idb_path: Option<&Path>,
+        processor: Option<&str>,
+        bitness: Option<Bitness>,
+        base_address: Option<Address>,
+        entry_point: Option<Address>,
     ) -> Result<Self, IDAError> {
         let _guard = prepare_library()?;
         let path = path.as_ref();
@@ -207,17 +223,90 @@ impl IDB {
             return Err(IDAError::not_found(path));
         }
 
-        open_database_quiet(path, auto_analyse, args)?;
+        // Apply typed raw-target settings before auto-analysis consumes the
+        // loader's initial segment. Existing database opens leave this path
+        // unchanged because all of these options are absent.
+        let defer_analysis = auto_analyse
+            && (processor.is_some()
+                || bitness.is_some()
+                || base_address.is_some()
+                || entry_point.is_some());
+        open_database_quiet(path, auto_analyse && !defer_analysis, args)?;
 
-        let decompiler = unsafe { init_hexrays_plugin(0.into()) };
-
-        Ok(Self {
+        let mut db = Self {
             path: path.to_owned(),
             save,
-            decompiler,
+            decompiler: false,
             _guard,
             _marker: PhantomData,
-        })
+        };
+
+        if let Some(idb_path) = idb_path {
+            let idb_path =
+                CString::new(idb_path.to_string_lossy().as_ref()).map_err(IDAError::ffi)?;
+            if !unsafe { idalib_set_database_path(idb_path.as_ptr()) } {
+                return Err(IDAError::ffi_with("failed to set database output path"));
+            }
+        }
+
+        if let Some(processor) = processor {
+            let processor = CString::new(processor).map_err(IDAError::ffi)?;
+            if !unsafe { idalib_set_processor_type(processor.as_ptr()) } {
+                return Err(IDAError::ffi_with("failed to set raw processor type"));
+            }
+        }
+
+        if let Some(base_address) = base_address {
+            let result = unsafe { idalib_rebase_program(base_address) };
+            if result != 0 {
+                return Err(IDAError::ffi_with(format!(
+                    "failed to rebase raw input to {base_address:#x} (IDA error {result})"
+                )));
+            }
+        }
+
+        let mut bitness_changed = false;
+        if let Some(bitness) = bitness {
+            if db.meta().app_bitness() != bitness.bits() {
+                db.meta_mut().set_app_bitness(bitness);
+                bitness_changed = true;
+            }
+            for (_, mut segment) in db.segments() {
+                if segment.bitness() == bitness.segment_addressing() {
+                    continue;
+                }
+                if !segment.set_bitness(bitness) {
+                    return Err(IDAError::ffi_with(format!(
+                        "failed to set segment at {:#x} to {}-bit addressing",
+                        segment.start_address(),
+                        bitness.bits()
+                    )));
+                }
+                bitness_changed = true;
+            }
+        }
+
+        // Changing application/segment width can invalidate the loader's
+        // start-address state. Reapply the typed linear entry point after
+        // bitness has settled so subsequent metadata reads are valid.
+        if let Some(entry_point) = entry_point {
+            let entry_point_changed =
+                bitness_changed || db.meta().start_address() != Some(entry_point);
+            if entry_point_changed && !db.meta_mut().set_start_address(entry_point) {
+                return Err(IDAError::ffi_with(format!(
+                    "failed to set raw entry point to {entry_point:#x}"
+                )));
+            }
+        }
+
+        if defer_analysis && !db.auto_wait() {
+            return Err(IDAError::ffi_with(
+                "IDA auto-analysis did not complete successfully",
+            ));
+        }
+
+        db.decompiler = unsafe { init_hexrays_plugin(0.into()) };
+        Ok(db)
     }
 
     pub fn path(&self) -> &Path {
@@ -889,21 +978,22 @@ impl<'a> Iterator for EntryPointIter<'a> {
 #[cfg(test)]
 mod tests {
     use crate::idb::IDBOpenOptions;
+    use crate::segment::Bitness;
 
     #[test]
-    fn raw_target_options_build_typed_loader_arguments() {
+    fn raw_target_options_are_kept_out_of_cli_arguments() {
         let mut options = IDBOpenOptions::new();
-        options.processor("arm:ARMv7-M").entry_point(0x0800_0100);
+        options
+            .processor("arm:ARMv7-M")
+            .bitness(Bitness::Bits32)
+            .entry_point(0x0800_0100);
         options.base_address(0x0800_0000).expect("aligned address");
 
-        assert_eq!(
-            options.init_args(),
-            vec![
-                "-parm:ARMv7-M".to_string(),
-                "-b800000".to_string(),
-                "-i8000100".to_string(),
-            ]
-        );
+        assert_eq!(options.bitness, Some(Bitness::Bits32));
+        assert_eq!(options.processor.as_deref(), Some("arm:ARMv7-M"));
+        assert_eq!(options.base_address, Some(0x0800_0000));
+        assert_eq!(options.entry_point, Some(0x0800_0100));
+        assert!(options.init_args().is_empty());
     }
 
     #[test]

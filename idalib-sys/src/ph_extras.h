@@ -22,6 +22,10 @@ inline rust::String idalib_ph_long_name(const processor_t *ph) {
   return rust::String(name);
 }
 
+inline bool idalib_set_processor_type(const char *processor) {
+  return set_processor_type(processor, SETPROC_IDB);
+}
+
 inline bool idalib_is_thumb_at(const processor_t *ph, ea_t ea) {
   const auto T = 20;
 

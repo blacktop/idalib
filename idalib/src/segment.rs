@@ -24,7 +24,7 @@ impl Bitness {
         self as u32
     }
 
-    const fn segment_addressing(self) -> usize {
+    pub(crate) const fn segment_addressing(self) -> usize {
         match self {
             Self::Bits16 => 0,
             Self::Bits32 => 1,

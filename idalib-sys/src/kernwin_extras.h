@@ -173,24 +173,6 @@ inline bool idalib_get_license_id(std::array<uint8_t, 6> &id) {
 #endif
 }
 
-inline int idalib_open_database_quiet(int argc, const char *const *argv,
-                               bool auto_analysis) {
-  auto new_file = 0;
-  auto result = init_database(argc, argv, &new_file);
-
-  if (result != 0) {
-    return result;
-  }
-
-  (*callui)(ui_notification_t::ui_ready_to_run);
-
-  if (auto_analysis) {
-    result = !auto_wait();
-  }
-
-  return result;
-}
-
 inline rust::String idalib_ea2str(ea_t ea) {
   auto out = qstring();
 
