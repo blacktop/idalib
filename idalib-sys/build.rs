@@ -1,5 +1,6 @@
 use std::env;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use autocxx_bindgen::Builder as BindgenBuilder;
 
@@ -32,42 +33,75 @@ fn target_arch() -> String {
 }
 
 /// Get platform-specific clang args for the target
-fn platform_clang_args() -> Vec<&'static str> {
+fn platform_clang_args() -> Vec<String> {
     let os = target_os();
     let arch = target_arch();
+    let owned = |args: &[&str]| args.iter().map(|arg| (*arg).to_owned()).collect::<Vec<_>>();
 
     let mut args = if os == "linux" {
-        vec!["-std=c++17", "-w", "-D__LINUX__=1", "-D__EA64__=1"]
+        owned(&["-std=c++17", "-w", "-D__LINUX__=1", "-D__EA64__=1"])
     } else if os == "macos" {
-        vec!["-std=c++17", "-D__MACOS__=1", "-D__EA64__=1"]
-    } else if os == "windows" {
+        let output = Command::new("xcrun")
+            .args(["--sdk", "macosx", "--show-sdk-path"])
+            .output()
+            .expect("run xcrun to locate the macOS SDK");
+        assert!(
+            output.status.success(),
+            "xcrun could not locate the macOS SDK"
+        );
+        let sdk = String::from_utf8(output.stdout)
+            .expect("xcrun returned a non-UTF-8 SDK path")
+            .trim()
+            .to_owned();
+        let libcxx = Path::new(&sdk).join("usr/include/c++/v1");
+        assert!(
+            libcxx.is_dir(),
+            "macOS SDK libc++ headers not found at {}",
+            libcxx.display()
+        );
         vec![
+            "-std=c++17".to_owned(),
+            "-nostdinc++".to_owned(),
+            "-isystem".to_owned(),
+            libcxx.display().to_string(),
+            "-include".to_owned(),
+            "type_traits".to_owned(),
+            "-D__MACOS__=1".to_owned(),
+            "-D__EA64__=1".to_owned(),
+        ]
+    } else if os == "windows" {
+        owned(&[
             "-std=c++17",
             "-D__NT__=1",
             "-D__EA64__=1",
             "-D_CRT_USE_BUILTIN_OFFSETOF",
-        ]
+        ])
     } else {
         panic!("unsupported platform: {}", os)
     };
 
     // pro.h gates NULL_VA_LIST and va_list handling on __ARM__
     if arch == "aarch64" {
-        args.push("-D__ARM__=1");
+        args.push("-D__ARM__=1".to_owned());
     }
 
     args
 }
 
-fn configure_and_generate(builder: BindgenBuilder, ida: &Path, output: impl AsRef<Path>) {
+fn configure_and_generate(
+    builder: BindgenBuilder,
+    ida: &Path,
+    clang_args: &[&str],
+    output: impl AsRef<Path>,
+) {
     let rs = PathBuf::from(env::var("OUT_DIR").unwrap()).join(output.as_ref());
 
     let mut builder = builder
         .clang_arg("-xc++")
         .clang_arg(format!("-I{}", ida.display()));
 
-    for arg in platform_clang_args() {
-        builder = builder.clang_arg(arg);
+    for arg in clang_args {
+        builder = builder.clang_arg(*arg);
     }
 
     let bindings = builder
@@ -83,15 +117,16 @@ fn main() {
         PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should be set"))
             .join("sdk/src");
     let ida = sdk_path.join("include");
-
     cxx_build::CFG.exported_header_dirs.push(&ida);
 
     let ffi_path = Path::new("src");
+    let os = target_os();
 
     let clang_args = platform_clang_args();
+    let clang_arg_refs = clang_args.iter().map(String::as_str).collect::<Vec<_>>();
 
     let mut builder = autocxx_build::Builder::new(ffi_path.join("lib.rs"), [ffi_path, &*ida])
-        .extra_clang_args(&clang_args)
+        .extra_clang_args(&clang_arg_refs)
         .build()
         .unwrap_or_else(|error| panic!("autocxx parse failed: {error:#?}"));
 
@@ -104,7 +139,6 @@ fn main() {
     builder.file(ffi_path.join("lumina_extras.cc"));
     builder.file(ffi_path.join("debugger_extras.cc"));
 
-    let os = target_os();
     let arch = target_arch();
 
     if os == "linux" {
@@ -161,14 +195,14 @@ fn main() {
         .allowlist_item("OF_.*")
         .layout_tests(false);
 
-    configure_and_generate(pod, &ida, "pod.rs");
+    configure_and_generate(pod, &ida, &clang_arg_refs, "pod.rs");
 
     let idp = autocxx_bindgen::builder()
         .header(ida.join("pro.h").to_str().expect("path is valid string"))
         .header(ida.join("idp.hpp").to_str().expect("path is valid string"))
         .allowlist_item("PLFM_.*");
 
-    configure_and_generate(idp, &ida, "idp.rs");
+    configure_and_generate(idp, &ida, &clang_arg_refs, "idp.rs");
 
     let inf = autocxx_bindgen::builder()
         .header(ida.join("pro.h").to_str().expect("path is valid string"))
@@ -188,7 +222,7 @@ fn main() {
         .allowlist_item("SW_.*")
         .allowlist_item("compiler_info_t");
 
-    configure_and_generate(inf, &ida, "inf.rs");
+    configure_and_generate(inf, &ida, &clang_arg_refs, "inf.rs");
 
     let insn_consts = [
         ("ARM_.*", "insn_arm.rs"),
@@ -207,7 +241,7 @@ fn main() {
             .clang_arg("-fshort-enums")
             .allowlist_item(prefix);
 
-        configure_and_generate(arch, &ida, output);
+        configure_and_generate(arch, &ida, &clang_arg_refs, output);
     }
 
     let hexrays = autocxx_bindgen::builder()
@@ -246,7 +280,7 @@ fn main() {
         .allowlist_item("DECOMP_.*")
         .layout_tests(false);
 
-    configure_and_generate(hexrays, &ida, "hexrays.rs");
+    configure_and_generate(hexrays, &ida, &clang_arg_refs, "hexrays.rs");
 
     println!("cargo::metadata=sdk={}", sdk_path.display());
 
