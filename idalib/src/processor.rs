@@ -348,4 +348,12 @@ impl<'a> Processor<'a> {
     pub fn is_thumb_at(&self, ea: Address) -> bool {
         unsafe { idalib_is_thumb_at(self.ptr, ea.into()) }
     }
+
+    /// Set the ARM T-state beginning at `ea`.
+    ///
+    /// Returns false for non-ARM or 64-bit databases, where Thumb state does
+    /// not apply, or when IDA refuses the segment-register range change.
+    pub fn set_thumb_at(&mut self, ea: Address, enabled: bool) -> bool {
+        unsafe { idalib_set_thumb_at(self.ptr, ea.into(), enabled) }
+    }
 }

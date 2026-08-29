@@ -307,6 +307,13 @@ impl IDB {
         Some(Insn::from_repr(insn))
     }
 
+    /// Undefine the item containing `ea`, if any, and recreate an instruction
+    /// using the processor state currently recorded at that address. Existing
+    /// function bounds are preserved.
+    pub fn recreate_insn_at(&mut self, ea: Address) -> bool {
+        unsafe { idalib_recreate_insn(ea.into()) }
+    }
+
     pub fn decompile<'a>(&'a self, f: &Function<'a>) -> Result<CFunction<'a>, IDAError> {
         self.decompile_with(f, false)
     }

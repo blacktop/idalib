@@ -1344,6 +1344,11 @@ mod ffix {
         unsafe fn idalib_ph_short_name(ph: *const processor_t) -> String;
         unsafe fn idalib_ph_long_name(ph: *const processor_t) -> String;
         unsafe fn idalib_is_thumb_at(ph: *const processor_t, ea: c_ulonglong) -> bool;
+        unsafe fn idalib_set_thumb_at(
+            ph: *const processor_t,
+            ea: c_ulonglong,
+            enabled: bool,
+        ) -> bool;
 
         unsafe fn idalib_qflow_graph_getn_block(
             f: *const qflow_chart_t,
@@ -1388,6 +1393,7 @@ mod ffix {
         unsafe fn idalib_get_dword(ea: c_ulonglong) -> u32;
         unsafe fn idalib_get_qword(ea: c_ulonglong) -> u64;
         unsafe fn idalib_get_bytes(ea: c_ulonglong, buf: &mut Vec<u8>) -> Result<usize>;
+        unsafe fn idalib_recreate_insn(ea: c_ulonglong) -> bool;
         unsafe fn idalib_patch_bytes(ea: c_ulonglong, buf: &mut Vec<u8>) -> bool;
         unsafe fn idalib_visit_patched_bytes(
             start: c_ulonglong,
@@ -1618,6 +1624,7 @@ pub mod processor {
     pub use super::ffi::{get_ph, processor_t};
     pub use super::ffix::{
         idalib_is_thumb_at, idalib_ph_id, idalib_ph_long_name, idalib_ph_short_name,
+        idalib_set_thumb_at,
     };
     pub use super::idp as ids;
 }
@@ -1641,7 +1648,7 @@ pub mod bytes {
     pub use super::ffi::{flags64_t, get_flags, is_code, is_data};
     pub use super::ffix::{
         idalib_get_byte, idalib_get_bytes, idalib_get_dword, idalib_get_qword, idalib_get_word,
-        idalib_patch_bytes, idalib_visit_patched_bytes, patched_byte_info,
+        idalib_patch_bytes, idalib_recreate_insn, idalib_visit_patched_bytes, patched_byte_info,
     };
 }
 

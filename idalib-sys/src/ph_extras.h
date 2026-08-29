@@ -32,6 +32,15 @@ inline bool idalib_is_thumb_at(const processor_t *ph, ea_t ea) {
   return false;
 }
 
+inline bool idalib_set_thumb_at(const processor_t *ph, ea_t ea, bool enabled) {
+  const auto T = 20;
+
+  if (ph->id == PLFM_ARM && !inf_is_64bit()) {
+    return split_sreg_range(ea, T, enabled ? 1 : 0, SR_user, true);
+  }
+  return false;
+}
+
 inline long long idalib_assemble_line(ea_t ea, const char *line,
                                rust::Vec<rust::u8> &out) {
   const processor_t *ph = get_ph();

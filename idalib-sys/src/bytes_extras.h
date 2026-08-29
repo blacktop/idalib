@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bytes.hpp"
+#include "ua.hpp"
 
 #include "cxx.h"
 
@@ -26,6 +27,13 @@ inline bool idalib_patch_bytes(ea_t ea, rust::Vec<rust::u8> &buf) {
   }
   patch_bytes(ea, buf.data(), buf.size());
   return true;
+}
+
+inline bool idalib_recreate_insn(ea_t ea) {
+  if (!is_unknown_ea(ea) && !del_items(ea, DELIT_SIMPLE | DELIT_NOTRUNC, 1)) {
+    return false;
+  }
+  return create_insn(ea) > 0;
 }
 
 bool idalib_visit_patched_bytes(ea_t start, ea_t end,
