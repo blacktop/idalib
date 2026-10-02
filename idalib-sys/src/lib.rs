@@ -1886,10 +1886,9 @@ pub mod ida {
             "IDA cannot function correctly when not running on the main thread"
         );
 
-        if !is_license_valid() {
-            return Err(IDAError::InvalidLicense);
-        }
-
+        // No pre-open license guard: a headless session has no active license
+        // until init_database() activates one, so is_license_valid() is false
+        // here by design. IDA itself validates the license during open.
         let path = CString::new(path.as_ref().to_string_lossy().as_ref()).map_err(IDAError::ffi)?;
 
         let res = unsafe { ffi::open_database(path.as_ptr(), auto_analysis, std::ptr::null()) };
@@ -1911,10 +1910,7 @@ pub mod ida {
             "IDA cannot function correctly when not running on the main thread"
         );
 
-        if !is_license_valid() {
-            return Err(IDAError::InvalidLicense);
-        }
-
+        // No pre-open license guard; see open_database_with.
         let mut args = args
             .iter()
             .map(|s| CString::new(s.as_ref()).map_err(IDAError::ffi))

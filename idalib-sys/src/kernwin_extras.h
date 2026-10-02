@@ -2,175 +2,62 @@
 
 #include "auto.hpp"
 #include "kernwin.hpp"
+#include "license_seam.hpp"
 #include "loader.hpp"
 #include "pro.h"
 
-#include <algorithm>
 #include <array>
 #include <cstdint>
 
-struct license_manager_t;
-struct license_manager_t_vtbl;
+// IDA 9.5 made the license query API public (license.hpp / license_seam.hpp),
+// replacing the reverse-engineered license_manager_t layout earlier branches
+// probed and the always-true stub the 9.4 branch shipped.
 
-struct license_result_t {
-  uint8_t lid[6];
-  uint16_t _skip;
-  uint32_t is_ok;
-  uint32_t pidx;
-  uint32_t eidx;
-};
+inline bool idalib_check_license() { return is_license_valid(); }
 
-struct license_location_t {
-  qstring server_host;
-  uint16_t server_port;
-  uint8_t _skip_a;
-  uint8_t _skip_b;
-  uint32_t _skip_c;
-  uint64_t remote;
-#if defined(__NT__)
-  uint64_t _skip_d;
-#endif
-  qstring license_path;
-  qstring license_path_pattern;
-};
+/// End of the activation period as seconds since the Epoch (UTC);
+/// 0 when there is no license or the license never expires.
+inline int64_t idalib_license_end_date() { return get_license_end(); }
 
-struct license_info_t {
-  uint8_t lid[6];
-  uint16_t _skip;
-  uint32_t pidx;
-  uint32_t eidx;
-};
-
-struct license_addon_info_t {
-  uint8_t lid[6];
-  uint16_t _skip_a;
-  uint32_t aidx;
-  uint8_t owner_lid[6];
-  uint16_t _skip_b;
-  uint32_t _skip_c;
-  uint64_t start_date;
-  uint64_t end_date;
-};
-
-struct license_manager_t_vtbl {
-#if defined(__NT__)
-  void *_skip_a[3];
-#else
-  void *_skip_a[4];
-#endif
-  int (*get_or_borrow_license)(license_manager_t *, void *, license_info_t *,
-                               uint64_t, qstring *);
-  void *(*get_license_location)(license_manager_t *);
-  void *_skip_b[5];
-  license_result_t *(*check)(license_manager_t *, bool *, int);
-};
-
-struct license_manager_t {
-  license_manager_t_vtbl *_vtbl;
-  qvector<qstring> ida_dirs;
-  void *logger;
-  license_location_t license_location;
-  qvector<license_info_t> licenses;
-  qstring user_name;
-  qstring user_email;
-  license_result_t result;
-  uint32_t _skip_a[3];
-  qstring owner;
-  qvector<license_addon_info_t> addons;
-  void *_skip_b[3];
-  uint64_t start_date;
-  uint64_t end_date;
-  uint64_t issued_on;
-  qstring description;
-  uint64_t _skip_c;
-  qstring license_content;
-  uint64_t _skip_d[16];
-  qstring machine_id;
-};
-
-struct config_t {
-#if defined(__MACOS__)
-  uint8_t _skip_a[0x258];
-#elif defined(__LINUX__)
-  uint8_t _skip_a[0x2a0];
-#elif defined(__NT__)
-  uint8_t _skip_a[0x240];
-#endif
-  license_location_t *license_location;
-  license_info_t *license_info;
-};
-
-extern "C" license_manager_t *get_license_manager();
-extern "C" config_t *get_current_config();
-
-inline bool idalib_check_license() {
-#if IDA_SDK_VERSION >= 940
-  // IDA 9.4 changed the private license-manager ABI. Avoid probing the
-  // stripped internal layout here; IDA itself still enforces licensing during
-  // database open.
-  return true;
-#else
-  auto manager = get_license_manager();
-  if (!manager) {
-    return false;
-  }
-
-  bool borrowed = false;
-  auto res = manager->_vtbl->check(manager, &borrowed, 0);
-  if (res && res->is_ok) {
-    return true;
-  }
-
-  config_t *config = get_current_config();
-  uint64_t flags = 16;
-
-  // NOTE: this will contain a description of any error; we should likely
-  // figure out how to expose it...
-  qstring estr;
-
-  auto nres = manager->_vtbl->get_or_borrow_license(
-      manager, config->license_location, config->license_info, flags, &estr);
-
-  return !nres;
-#endif
-}
-
-// Raw accessor; end_date is populated by get_or_borrow_license(), so the
-// Rust-side license_end_date() runs is_license_valid() first.
-inline int64_t idalib_license_end_date() {
-#if IDA_SDK_VERSION >= 940
-  return 0;
-#else
-  auto manager = get_license_manager();
-  if (!manager) {
-    return 0;
-  }
-  return static_cast<int64_t>(manager->end_date);
-#endif
-}
-
+/// Fill `id` with the 6 raw bytes of the active license ID, parsed from the
+/// seam's "XX-XXXX-XXXX-XX" hex form.
 inline bool idalib_get_license_id(std::array<uint8_t, 6> &id) {
-#if IDA_SDK_VERSION >= 940
-  return false;
-#else
-  if (!idalib_check_license()) {
+  char buf[64] = {};
+  uint64_t needed = get_license_id_buf(buf, sizeof(buf));
+  if (needed == 0 || needed > sizeof(buf)) {
     return false;
   }
 
-  auto manager = get_license_manager();
-  if (!manager) {
-    return false;
+  size_t count = 0;
+  uint8_t pending = 0;
+  bool high_nibble = true;
+  for (const char *p = buf; *p != '\0'; ++p) {
+    if (*p == '-') {
+      continue;
+    }
+    int digit;
+    if (*p >= '0' && *p <= '9') {
+      digit = *p - '0';
+    } else if (*p >= 'A' && *p <= 'F') {
+      digit = *p - 'A' + 10;
+    } else if (*p >= 'a' && *p <= 'f') {
+      digit = *p - 'a' + 10;
+    } else {
+      return false;
+    }
+    if (high_nibble) {
+      pending = static_cast<uint8_t>(digit << 4);
+      high_nibble = false;
+    } else {
+      if (count >= id.size()) {
+        return false;
+      }
+      id[count++] = static_cast<uint8_t>(pending | digit);
+      high_nibble = true;
+    }
   }
 
-  bool borrowed = false;
-  auto res = manager->_vtbl->check(manager, &borrowed, 0);
-  if (res && res->is_ok) {
-    std::copy(std::begin(res->lid), std::end(res->lid), std::begin(id));
-    return true;
-  }
-
-  return false;
-#endif
+  return count == id.size() && high_nibble;
 }
 
 inline int idalib_open_database_quiet(int argc, const char *const *argv,

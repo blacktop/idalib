@@ -594,7 +594,21 @@ impl IDB {
     }
 
     pub fn load_debug_info(&self, path: impl AsRef<Path>, verbose: bool) -> Result<bool, IDAError> {
-        crate::ffi::ida::load_dbg_dbginfo(path, verbose)
+        let loaded = crate::ffi::ida::load_dbg_dbginfo(path, verbose)?;
+        if loaded {
+            // IDA 9.5 queues debug-info application (names, types) on the
+            // auto-analysis queue instead of applying it synchronously, so
+            // wait for the queue to drain before reporting the load complete.
+            // On runtimes that still apply inline this returns immediately.
+            // auto_wait() returns false when the wait was cancelled, leaving
+            // the debug info only partially applied.
+            if !unsafe { auto_wait() } {
+                return Err(IDAError::ffi_with(
+                    "debug info load was interrupted before auto-analysis applied it",
+                ));
+            }
+        }
+        Ok(loaded)
     }
 
     pub fn bookmarks(&self) -> Bookmarks<'_> {

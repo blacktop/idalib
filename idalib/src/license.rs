@@ -42,14 +42,10 @@ pub fn is_valid_license() -> Result<bool, IDAError> {
     Ok(ffi::ida::is_license_valid())
 }
 
-/// License expiry as a Unix timestamp (seconds). `None` if the license
-/// manager is unavailable or the field is unset (e.g. perpetual license).
-///
-/// Implicitly runs the license check/borrow path so `end_date` is
-/// populated; callers do not need to call [`is_valid_license`] first.
+/// License expiry as a Unix timestamp (seconds). `None` when there is no
+/// license or the license never expires (e.g. perpetual license).
 pub fn license_end_date() -> Result<Option<u64>, IDAError> {
     init_library()?;
-    let _ = ffi::ida::is_license_valid();
     Ok(ffi::ida::license_end_date())
 }
 

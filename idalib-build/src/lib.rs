@@ -32,7 +32,7 @@ fn target_arch() -> String {
 }
 
 /// Whether the SDK lacks stub libraries and a local IDA install is required
-/// to link. The IDA 9.4 SDK ships stubs for all supported 64-bit platforms.
+/// to link. The IDA 9.5 SDK ships stubs for all supported 64-bit platforms.
 pub fn requires_local_ida_install() -> bool {
     false
 }
@@ -40,11 +40,11 @@ pub fn requires_local_ida_install() -> bool {
 fn link_path() -> PathBuf {
     let os = target_os();
     if os == "macos" {
-        PathBuf::from("/Applications/IDA Professional 9.4.app/Contents/MacOS")
+        PathBuf::from("/Applications/IDA Professional 9.5.app/Contents/MacOS")
     } else if os == "linux" {
-        PathBuf::from(env::var("HOME").unwrap()).join("ida-pro-9.4")
+        PathBuf::from(env::var("HOME").unwrap()).join("ida-pro-9.5")
     } else if os == "windows" {
-        PathBuf::from("C:\\Program Files\\IDA Professional 9.4")
+        PathBuf::from("C:\\Program Files\\IDA Professional 9.5")
     } else {
         panic!("unsupported platform: {}", os)
     }
