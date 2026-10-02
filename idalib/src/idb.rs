@@ -60,7 +60,6 @@ pub struct PatchedByte {
 #[derive(Debug, Clone)]
 pub struct IDBOpenOptions {
     idb: Option<PathBuf>,
-    ftype: Option<String>,
     processor: Option<String>,
     base_address: Option<Address>,
     entry_point: Option<Address>,
@@ -74,7 +73,6 @@ impl Default for IDBOpenOptions {
     fn default() -> Self {
         Self {
             idb: None,
-            ftype: None,
             processor: None,
             base_address: None,
             entry_point: None,
@@ -97,11 +95,6 @@ impl IDBOpenOptions {
 
     pub fn save(&mut self, save: bool) -> &mut Self {
         self.save = save;
-        self
-    }
-
-    pub fn file_type(&mut self, ftype: impl AsRef<str>) -> &mut Self {
-        self.ftype = Some(ftype.as_ref().to_owned());
         self
     }
 
@@ -147,10 +140,6 @@ impl IDBOpenOptions {
 
     fn init_args(&self) -> Vec<String> {
         let mut args = Vec::new();
-
-        if let Some(ftype) = self.ftype.as_ref() {
-            args.push(format!("-T{ftype}"));
-        }
 
         if let Some(idb_path) = self.idb.as_ref() {
             args.push("-c".to_owned());
