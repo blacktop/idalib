@@ -28,6 +28,40 @@ struct cblock_iter {
   cblock_iter(cblock_t *b) : start(b->begin()), end(b->end()) {}
 };
 
+// TODO(ida-9.5-hexrays-magic): remove the ...06 fallback below once the
+// official IDA 9.5 SDK publishes hexrays.hpp with HEXRAYS_API_MAGIC ...06.
+//
+// The public releases/9.5 header still declares ...05, but the 9.5.261001
+// runtime only accepts ...06, so init_hexrays_plugin() reports the decompiler
+// as unavailable. Both sides were verified to share the same hx_* dispatch
+// table (694/694 names and values), and calls go through get_hexdsp() without
+// re-checking the magic, so accepting exactly ...06 at init is the only
+// deviation. The static_assert fails the build as soon as the SDK submodule
+// moves to a header that no longer declares ...05.
+#if IDA_SDK_VERSION == 950
+static_assert(HEXRAYS_API_MAGIC == 0x00DEC0DE00000005LL,
+              "TODO(ida-9.5-hexrays-magic): the SDK's hexrays.hpp no longer "
+              "declares HEXRAYS_API_MAGIC ...05, so the official IDA 9.5 SDK has "
+              "landed. Delete the ...06 fallback in idalib_hexrays_init() "
+              "(idalib-sys/src/hexrays_extras.h), remove the "
+              "TODO(ida-9.5-hexrays-magic) notes, and rerun just test-decompile "
+              "in ida-mcp-rs.");
+inline constexpr int64 IDALIB_HEXRAYS_RUNTIME_MAGIC_95 = 0x00DEC0DE00000006LL;
+#endif
+
+inline bool idalib_hexrays_init() {
+  if (init_hexrays_plugin(0)) {
+    return true;
+  }
+#if IDA_SDK_VERSION == 950
+  hexdsp_t *dummy = nullptr;
+  return callui(ui_broadcast, IDALIB_HEXRAYS_RUNTIME_MAGIC_95, &dummy, 0).i ==
+         (IDALIB_HEXRAYS_RUNTIME_MAGIC_95 >> 32);
+#else
+  return false;
+#endif
+}
+
 inline cfunc_t *idalib_hexrays_cfuncptr_inner(const cfuncptr_t *f) { return *f; }
 
 inline std::unique_ptr<cfuncptr_t>

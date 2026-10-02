@@ -545,7 +545,7 @@ pub mod hexrays {
         idalib_hexrays_cfunc_has_eamap, idalib_hexrays_cfunc_pseudocode,
         idalib_hexrays_cfuncptr_inner, idalib_hexrays_cinsn_ea, idalib_hexrays_cinsn_op,
         idalib_hexrays_cinsn_print, idalib_hexrays_decompile_func, idalib_hexrays_eamap_result_len,
-        idalib_hexrays_eamap_result_next, idalib_hexrays_eamap_result_reset,
+        idalib_hexrays_eamap_result_next, idalib_hexrays_eamap_result_reset, idalib_hexrays_init,
     };
 
     unsafe impl cxx::ExternType for cfunc_t {
@@ -1120,6 +1120,8 @@ mod ffix {
         unsafe fn idalib_qflow_graph_entry(f: *const qflow_chart_t) -> c_int;
         unsafe fn idalib_qflow_graph_exit(f: *const qflow_chart_t) -> c_int;
         unsafe fn idalib_qflow_graph_node_qty(f: *const qflow_chart_t) -> c_int;
+
+        unsafe fn idalib_hexrays_init() -> bool;
 
         unsafe fn idalib_hexrays_cfuncptr_inner(
             f: *const qrefcnt_t_cfunc_t_AutocxxConcrete,
