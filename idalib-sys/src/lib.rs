@@ -920,6 +920,8 @@ mod ffix {
         stdout_text: String,
         stderr_text: String,
         error: String,
+        result_json: String,
+        result_is_repr: bool,
     }
 
     #[derive(Debug, Clone, Default)]
@@ -1449,6 +1451,8 @@ mod ffix {
 
         unsafe fn idalib_plugin_version(p: *const plugin_t) -> u64;
         unsafe fn idalib_plugin_flags(p: *const plugin_t) -> u64;
+        unsafe fn idalib_save_database() -> bool;
+        unsafe fn idalib_idb_path() -> String;
 
         unsafe fn idalib_get_library_version(
             major: *mut c_int,
@@ -1701,7 +1705,9 @@ pub mod strings {
 
 pub mod loader {
     pub use super::ffi::{find_plugin, plugin_t, run_plugin};
-    pub use super::ffix::{idalib_plugin_flags, idalib_plugin_version};
+    pub use super::ffix::{
+        idalib_idb_path, idalib_plugin_flags, idalib_plugin_version, idalib_save_database,
+    };
 
     pub mod flags {
         pub use super::super::ffi::{

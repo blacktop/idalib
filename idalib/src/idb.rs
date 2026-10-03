@@ -21,6 +21,7 @@ use crate::ffi::idp::idalib_assemble_line;
 use crate::ffi::insn::decode;
 use crate::ffi::lines::idalib_generate_disasm_line;
 use crate::ffi::loader::find_plugin;
+use crate::ffi::loader::{idalib_idb_path, idalib_save_database};
 use crate::ffi::name::set_name;
 use crate::ffi::processor::get_ph;
 use crate::ffi::search::{idalib_find_defined, idalib_find_imm, idalib_find_text};
@@ -215,6 +216,26 @@ impl IDB {
 
     pub fn save_on_close(&mut self, status: bool) {
         self.save = status;
+    }
+
+    /// Path of the open database file. For a database created from a raw
+    /// binary this differs from [`IDB::path`], which is the input.
+    pub fn database_path(&self) -> PathBuf {
+        PathBuf::from(unsafe { idalib_idb_path() })
+    }
+
+    /// Writes the open database to its own path without closing it and
+    /// returns that path.
+    pub fn save_database(&mut self) -> Result<PathBuf, IDAError> {
+        let database_path = self.database_path();
+        if unsafe { idalib_save_database() } {
+            Ok(database_path)
+        } else {
+            Err(IDAError::ffi_with(format!(
+                "IDA could not save the database to {}",
+                database_path.display()
+            )))
+        }
     }
 
     pub fn auto_wait(&mut self) -> bool {
