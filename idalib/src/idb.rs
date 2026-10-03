@@ -218,6 +218,11 @@ impl IDB {
         self.save = status;
     }
 
+    /// The loaded image's base address; see [`Metadata::image_base`].
+    pub fn image_base(&self) -> Address {
+        self.meta().image_base()
+    }
+
     /// Path of the open database file. For a database created from a raw
     /// binary this differs from [`IDB::path`], which is the input.
     pub fn database_path(&self) -> PathBuf {
