@@ -26,6 +26,8 @@ bool idalib_run_python_snippet(rust::Str code, script_result &out) {
   out.stdout_text = rust::String();
   out.stderr_text = rust::String();
   out.error = rust::String();
+  out.result_json = rust::String();
+  out.result_is_repr = false;
 
   // Find the Python extlang
   extlang_object_t py = find_extlang_by_name("Python");
@@ -35,8 +37,12 @@ bool idalib_run_python_snippet(rust::Str code, script_result &out) {
   }
 
   // Build a wrapper that redirects stdout/stderr via StringIO,
-  // executes the user code, then stores captured output in globals
-  // that we can retrieve with eval_expr.
+  // executes the user code in the interpreter's globals (so names persist
+  // between calls), evaluates a trailing expression as the result, then
+  // stores captured output in globals that we can retrieve with eval_expr.
+  // The result is strict JSON whose integers fit the reader's native
+  // i64/u64 range; anything else falls back to repr() so no value is
+  // silently rounded.
   std::string user_code(code.data(), code.length());
 
   // Escape the user code for embedding in a triple-quoted string.
@@ -51,10 +57,45 @@ bool idalib_run_python_snippet(rust::Str code, script_result &out) {
     "_mcp_sys.stdout = _mcp_out\n"
     "_mcp_sys.stderr = _mcp_err\n"
     "_mcp_exec_error = ''\n"
+    "_mcp_result_json = ''\n"
+    "_mcp_result_is_repr = 0\n"
+    "def _mcp_json_exact(_mcp_v):\n"
+    "    if isinstance(_mcp_v, bool):\n"
+    "        return True\n"
+    "    if isinstance(_mcp_v, int):\n"
+    "        return -(1 << 63) <= _mcp_v <= (1 << 64) - 1\n"
+    "    if isinstance(_mcp_v, (list, tuple)):\n"
+    "        return all(_mcp_json_exact(_mcp_item) for _mcp_item in _mcp_v)\n"
+    "    if isinstance(_mcp_v, dict):\n"
+    "        return all(_mcp_json_exact(_mcp_item) for _mcp_item in _mcp_v.values())\n"
+    "    return True\n"
     "try:\n"
-    "    exec(_mcp_code_input)\n"
+    "    import ast as _mcp_ast, json as _mcp_json\n"
+    "    _mcp_tree = _mcp_ast.parse(_mcp_code_input, '<run_script>')\n"
+    "    _mcp_last = None\n"
+    "    if _mcp_tree.body and isinstance(_mcp_tree.body[-1], _mcp_ast.Expr):\n"
+    "        _mcp_last = _mcp_ast.Expression(_mcp_tree.body.pop().value)\n"
+    "    exec(compile(_mcp_tree, '<run_script>', 'exec'), globals())\n"
+    "    if _mcp_last is not None:\n"
+    "        _mcp_value = eval(compile(_mcp_last, '<run_script>', 'eval'), globals())\n"
+    "        if _mcp_value is not None:\n"
+    "            try:\n"
+    "                _mcp_encoded = _mcp_json.dumps(_mcp_value, allow_nan=False)\n"
+    "                if not _mcp_json_exact(_mcp_value):\n"
+    "                    raise TypeError('integer outside the 64-bit range')\n"
+    "            except (TypeError, ValueError):\n"
+    "                _mcp_encoded = _mcp_json.dumps(repr(_mcp_value))\n"
+    "                _mcp_result_is_repr = 1\n"
+    "            if len(_mcp_encoded) > 1048576:\n"
+    "                _mcp_result_is_repr = 0\n"
+    "                raise ValueError(\n"
+    "                    'script result is %d bytes of JSON, over the 1 MiB limit; '\n"
+    "                    'return a smaller value' % len(_mcp_encoded))\n"
+    "            _mcp_result_json = _mcp_encoded\n"
     "except Exception as _mcp_e:\n"
-    "    _mcp_exec_error = str(_mcp_e)\n"
+    "    import traceback as _mcp_traceback\n"
+    "    _mcp_traceback.print_exc(file=_mcp_err)\n"
+    "    _mcp_exec_error = type(_mcp_e).__name__ + ': ' + str(_mcp_e)\n"
     "finally:\n"
     "    _mcp_sys.stdout = _mcp_old_stdout\n"
     "    _mcp_sys.stderr = _mcp_old_stderr\n"
@@ -155,15 +196,34 @@ bool idalib_run_python_snippet(rust::Str code, script_result &out) {
     out.success = true;
   }
 
-  // Step 6: Clean up temporary variables (wrapped in try/except in
+  // Step 6: Retrieve the trailing-expression result. The wrapper bounds its
+  // size, so it is copied whole: truncating would leave invalid JSON.
+  errbuf.qclear();
+  if (py->eval_expr(&rv, BADADDR, "_mcp_result_json", &errbuf)) {
+    if (rv.vtype == VT_STR) {
+      out.result_json = rust::String(rv.c_str());
+    }
+  }
+  errbuf.qclear();
+  if (py->eval_expr(&rv, BADADDR, "_mcp_result_is_repr", &errbuf)) {
+    out.result_is_repr = (rv.vtype == VT_LONG && rv.num != 0)
+                         || (rv.vtype == VT_INT64 && rv.i64 != 0);
+  }
+
+  // Step 7: Clean up temporary variables (wrapped in try/except in
   // case earlier steps failed before all variables were created).
   py->eval_snippet(
     "try:\n"
     "    del _mcp_code_input, _mcp_out, _mcp_err, _mcp_old_stdout, _mcp_old_stderr, "
     "_mcp_captured_stdout, _mcp_captured_stderr, _mcp_exec_error, _mcp_sys, "
-    "_mcp_StringIO, _mcp_b64\n"
+    "_mcp_StringIO, _mcp_b64, _mcp_result_json, _mcp_result_is_repr\n"
     "except NameError:\n"
-    "    pass\n",
+    "    pass\n"
+    "for _mcp_name in ('_mcp_ast', '_mcp_json', '_mcp_tree', '_mcp_last', '_mcp_value',\n"
+    "                  '_mcp_encoded', '_mcp_json_exact',\n"
+    "                  '_mcp_e', '_mcp_traceback'):\n"
+    "    globals().pop(_mcp_name, None)\n"
+    "del _mcp_name\n",
     &errbuf);
 
   return true;
