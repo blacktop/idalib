@@ -1,18 +1,20 @@
+use std::ffi::CString;
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::Address;
 pub use crate::ffi::hexrays::{HexRaysError, HexRaysErrorCode};
 use crate::ffi::hexrays::{
-    addr_range, cblock_iter, cblock_t, cfunc_t, cfuncptr_t, cinsn_t, eamap_result,
-    idalib_hexrays_cblock_iter, idalib_hexrays_cblock_iter_next, idalib_hexrays_cblock_len,
-    idalib_hexrays_cfunc_body, idalib_hexrays_cfunc_find_stmts_at,
+    addr_range, cblock_iter, cblock_t, cfunc_t, cfuncptr_t, cinsn_t, decompiler_lvar_info,
+    eamap_result, idalib_hexrays_cblock_iter, idalib_hexrays_cblock_iter_next,
+    idalib_hexrays_cblock_len, idalib_hexrays_cfunc_body, idalib_hexrays_cfunc_find_stmts_at,
     idalib_hexrays_cfunc_get_stmt_bounds, idalib_hexrays_cfunc_has_eamap,
     idalib_hexrays_cfunc_pseudocode, idalib_hexrays_cfuncptr_inner, idalib_hexrays_cinsn_ea,
     idalib_hexrays_cinsn_op, idalib_hexrays_cinsn_print, idalib_hexrays_eamap_result_len,
-    idalib_hexrays_eamap_result_next,
+    idalib_hexrays_eamap_result_next, idalib_hexrays_lvar_count, idalib_hexrays_lvar_info,
+    idalib_hexrays_rename_lvar, idalib_hexrays_set_lvar_type,
 };
 use crate::idb::IDB;
+use crate::{Address, IDAError};
 
 /// Address range covered by a decompiled statement
 #[derive(Debug, Clone, Copy)]
@@ -28,6 +30,20 @@ impl From<addr_range> for AddressRange {
             end: r.end,
         }
     }
+}
+
+/// A snapshot of one Hex-Rays local variable or argument.
+#[derive(Debug, Clone)]
+pub struct LocalVariable {
+    pub name: String,
+    pub type_name: String,
+    pub location: String,
+    /// IDA's definition address, or `None` if unknown.
+    pub definition_address: Option<Address>,
+    pub width: i32,
+    pub is_argument: bool,
+    pub has_user_name: bool,
+    pub has_user_type: bool,
 }
 
 pub struct CFunction<'a> {
@@ -139,6 +155,55 @@ impl<'a> CFunction<'a> {
             _obj: obj,
             _marker: PhantomData,
         })
+    }
+
+    /// Number of local variables in this decompilation.
+    pub fn local_variable_count(&self) -> Result<usize, IDAError> {
+        // SAFETY: `ptr` is non-null and retained by `_obj` for this IDB-bound
+        // CFunction. IDA calls remain on the thread owning the database.
+        unsafe { idalib_hexrays_lvar_count(self.ptr) }.map_err(IDAError::ffi)
+    }
+
+    /// Get a variable by its index in this decompilation. Indices are not
+    /// stable across decompilations or database edits.
+    pub fn local_variable(&self, index: usize) -> Result<Option<LocalVariable>, IDAError> {
+        let mut out = decompiler_lvar_info::default();
+        // SAFETY: `ptr` is retained by `_obj`; the shim bounds-checks `index`
+        // and writes only to the exclusively borrowed output value.
+        if !unsafe { idalib_hexrays_lvar_info(self.ptr, index, &mut out) }.map_err(IDAError::ffi)? {
+            return Ok(None);
+        }
+        Ok(Some(LocalVariable {
+            name: out.name,
+            type_name: out.type_name,
+            location: out.location,
+            definition_address: (out.definition_address != u64::MAX)
+                .then_some(out.definition_address),
+            width: out.width,
+            is_argument: out.is_argument,
+            has_user_name: out.has_user_name,
+            has_user_type: out.has_user_type,
+        }))
+    }
+
+    /// Persist a name for one variable from this decompilation. Consumes the
+    /// view because the operation invalidates the cached decompilation.
+    pub fn rename_local_variable(self, index: usize, name: &str) -> Result<(), IDAError> {
+        let name = CString::new(name).map_err(IDAError::ffi)?;
+        // SAFETY: `_obj` retains `ptr` through the call; `name` is a live C
+        // string. The shim checks the index and catches C++ exceptions at
+        // the cxx Result boundary. No reference to the invalidated view escapes.
+        unsafe { idalib_hexrays_rename_lvar(self.ptr, index, name.as_ptr()) }.map_err(IDAError::ffi)
+    }
+
+    /// Parse and persist a type for one variable. Returns IDA's normalized
+    /// type declaration and invalidates this decompilation view.
+    pub fn set_local_variable_type(self, index: usize, decl: &str) -> Result<String, IDAError> {
+        let decl = CString::new(decl).map_err(IDAError::ffi)?;
+        // SAFETY: `_obj` retains `ptr`; `decl` remains a valid C string. The
+        // shim checks the index/type and cxx translates C++ exceptions.
+        unsafe { idalib_hexrays_set_lvar_type(self.ptr, index, decl.as_ptr()) }
+            .map_err(IDAError::ffi)
     }
 
     /// Get the full pseudocode for this function as a string.

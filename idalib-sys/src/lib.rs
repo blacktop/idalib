@@ -535,17 +535,19 @@ pub mod hexrays {
 
     pub use __impl::{cblock_t, cexpr_t, cfunc_t, cinsn_t, citem_t, cswitch_t, cthrow_t, ctry_t};
 
-    pub use super::ffi::{
+    pub use crate::ffi::{
         carg_t, carglist_t, cfuncptr_t, init_hexrays_plugin, term_hexrays_plugin,
     };
-    pub use super::ffix::{
-        addr_range, cblock_iter, eamap_result, idalib_hexrays_cblock_iter,
+    pub use crate::ffix::{
+        addr_range, cblock_iter, decompiler_lvar_info, eamap_result, idalib_hexrays_cblock_iter,
         idalib_hexrays_cblock_iter_next, idalib_hexrays_cblock_len, idalib_hexrays_cfunc_body,
         idalib_hexrays_cfunc_find_stmts_at, idalib_hexrays_cfunc_get_stmt_bounds,
         idalib_hexrays_cfunc_has_eamap, idalib_hexrays_cfunc_pseudocode,
         idalib_hexrays_cfuncptr_inner, idalib_hexrays_cinsn_ea, idalib_hexrays_cinsn_op,
         idalib_hexrays_cinsn_print, idalib_hexrays_decompile_func, idalib_hexrays_eamap_result_len,
         idalib_hexrays_eamap_result_next, idalib_hexrays_eamap_result_reset, idalib_hexrays_init,
+        idalib_hexrays_lvar_count, idalib_hexrays_lvar_info, idalib_hexrays_rename_lvar,
+        idalib_hexrays_set_lvar_type,
     };
 
     unsafe impl cxx::ExternType for cfunc_t {
@@ -831,6 +833,18 @@ mod ffix {
         code: i32,
         addr: u64,
         desc: String,
+    }
+
+    #[derive(Debug, Clone, Default)]
+    struct decompiler_lvar_info {
+        name: String,
+        type_name: String,
+        location: String,
+        definition_address: u64,
+        width: i32,
+        is_argument: bool,
+        has_user_name: bool,
+        has_user_type: bool,
     }
 
     /// Address range for statement boundaries
@@ -1131,6 +1145,22 @@ mod ffix {
         ) -> *mut cfunc_t;
         unsafe fn idalib_hexrays_cfunc_pseudocode(f: *mut cfunc_t) -> String;
         unsafe fn idalib_hexrays_cfunc_body(f: *mut cfunc_t) -> *mut cblock_t;
+        unsafe fn idalib_hexrays_lvar_count(f: *mut cfunc_t) -> Result<usize>;
+        unsafe fn idalib_hexrays_lvar_info(
+            f: *mut cfunc_t,
+            index: usize,
+            out: &mut decompiler_lvar_info,
+        ) -> Result<bool>;
+        unsafe fn idalib_hexrays_rename_lvar(
+            f: *mut cfunc_t,
+            index: usize,
+            name: *const c_char,
+        ) -> Result<()>;
+        unsafe fn idalib_hexrays_set_lvar_type(
+            f: *mut cfunc_t,
+            index: usize,
+            decl: *const c_char,
+        ) -> Result<String>;
 
         unsafe fn idalib_hexrays_decompile_func(
             f: *mut func_t,

@@ -2,11 +2,13 @@
 
 #include "hexrays.hpp"
 #include "lines.hpp"
+#include "name.hpp"
 #include "pro.h"
 
 #include <cstdint>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 
 #include "cxx.h"
 
@@ -214,4 +216,114 @@ inline bool idalib_hexrays_cfunc_get_stmt_bounds(cfunc_t *f, const cinsn_t *insn
   out->start = rs.begin()->start_ea;
   out->end = rs.begin()->end_ea;
   return true;
+}
+
+#ifndef CXXBRIDGE1_STRUCT_decompiler_lvar_info
+#define CXXBRIDGE1_STRUCT_decompiler_lvar_info
+struct decompiler_lvar_info final {
+  ::rust::String name;
+  ::rust::String type_name;
+  ::rust::String location;
+  ::std::uint64_t definition_address;
+  ::std::int32_t width;
+  bool is_argument;
+  bool has_user_name;
+  bool has_user_type;
+  using IsRelocatable = ::std::true_type;
+};
+#endif
+
+inline lvars_t *idalib_hexrays_named_lvars(cfunc_t *f) {
+  if (f == nullptr) {
+    return nullptr;
+  }
+  // A fresh native decompilation has not necessarily assigned display names.
+  f->get_pseudocode();
+  return f->get_lvars();
+}
+
+inline size_t idalib_hexrays_lvar_count(cfunc_t *f) {
+  const lvars_t *vars = idalib_hexrays_named_lvars(f);
+  return vars == nullptr ? 0 : vars->size();
+}
+
+inline bool idalib_hexrays_lvar_info(cfunc_t *f, size_t index,
+                                     decompiler_lvar_info &out) {
+  const lvars_t *vars = idalib_hexrays_named_lvars(f);
+  if (vars == nullptr || index >= vars->size()) {
+    return false;
+  }
+  const lvar_t &var = (*vars)[index];
+  qstring location;
+  print_vdloc(&location, var.location, var.width);
+  qstring type_name;
+  if (!var.type().print(&type_name)) {
+    throw std::runtime_error("could not print local variable type");
+  }
+  out.name = rust::String(var.name.c_str());
+  out.type_name = rust::String(type_name.c_str());
+  out.location = rust::String(location.c_str());
+  out.definition_address = var.defea;
+  out.width = var.width;
+  out.is_argument = var.is_arg_var();
+  out.has_user_name = var.has_user_name();
+  out.has_user_type = var.has_user_type();
+  return true;
+}
+
+inline lvar_t &idalib_hexrays_lvar_at(cfunc_t *f, size_t index) {
+  lvars_t *vars = idalib_hexrays_named_lvars(f);
+  if (vars == nullptr || index >= vars->size()) {
+    throw std::runtime_error("local variable index is out of range");
+  }
+  return (*vars)[index];
+}
+
+inline void idalib_hexrays_rename_lvar(cfunc_t *f, size_t index,
+                                      const char *name) {
+  lvar_t &var = idalib_hexrays_lvar_at(f, index);
+  qstring checked(name);
+  if (checked.empty() || !validate_name(&checked, VNT_IDENT, 0) || checked != name) {
+    throw std::runtime_error("invalid local variable name");
+  }
+  for (size_t i = 0; i < f->get_lvars()->size(); ++i) {
+    if (i != index && (*f->get_lvars())[i].name == checked) {
+      throw std::runtime_error("another local variable already has that name");
+    }
+  }
+  lvar_saved_info_t info;
+  info.ll = var;
+  info.name = checked;
+  if (!modify_user_lvar_info(f->entry_ea, MLI_NAME, info)) {
+    throw std::runtime_error("Hex-Rays rejected the local variable name");
+  }
+  mark_cfunc_dirty(f->entry_ea, false);
+}
+
+inline rust::String idalib_hexrays_set_lvar_type(cfunc_t *f, size_t index,
+                                                const char *decl) {
+  lvar_t &var = idalib_hexrays_lvar_at(f, index);
+  tinfo_t type;
+  if (!parse_decl(&type, nullptr, nullptr, decl, PT_TYP | PT_SIL | PT_SEMICOLON)) {
+    throw std::runtime_error("could not parse local variable type declaration");
+  }
+  // parse_decl can succeed with an empty type (for example, bare void).
+  // Passing that to accepts_type raises a Hex-Rays internal exception.
+  if (type.empty() || type.is_void() || type.is_func() || type.is_unknown()
+      || !type.is_correct() || !var.accepts_type(type)) {
+    throw std::runtime_error("Hex-Rays does not accept this type for the local variable");
+  }
+  qstring type_name;
+  if (!type.print(&type_name)) {
+    throw std::runtime_error("could not print local variable type");
+  }
+  rust::String result(type_name.c_str());
+  lvar_saved_info_t info;
+  info.ll = var;
+  info.type = type;
+  if (!modify_user_lvar_info(f->entry_ea, MLI_TYPE, info)) {
+    throw std::runtime_error("Hex-Rays rejected the local variable type");
+  }
+  mark_cfunc_dirty(f->entry_ea, false);
+  return result;
 }
