@@ -417,9 +417,19 @@ impl<'a> Metadata<'a> {
         unsafe { idalib_inf_merge_strlits() }
     }
 
+    /// The paragraph base (`inf_get_baseaddr`) used by segmented formats; zero
+    /// for flat-memory files such as Mach-O, ELF, and PE. See [`Self::image_base`].
     pub fn base_address(&self) -> Option<Address> {
         let ea = unsafe { idalib_inf_get_baseaddr() };
         if ea != BADADDR { Some(ea.into()) } else { None }
+    }
+
+    /// The loaded image's base address (`get_imagebase`), as the loader set it
+    /// and as rebasing updates it. Zero is a valid image base.
+    pub fn image_base(&self) -> Address {
+        // SAFETY: Metadata borrows a live, non-Send IDB and its runtime guard.
+        // The SDK getter returns a scalar and retains no pointers or callbacks.
+        unsafe { idalib_inf_get_imagebase() }.into()
     }
 
     pub fn start_stack_segment(&self) -> Option<Address> {

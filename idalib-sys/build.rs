@@ -283,6 +283,9 @@ fn main() {
     configure_and_generate(hexrays, &ida, &clang_arg_refs, "hexrays.rs");
 
     println!("cargo::metadata=sdk={}", sdk_path.display());
+    // The bindings are generated from the SDK headers, so a submodule bump
+    // must regenerate them (cargo scans a directory recursively).
+    println!("cargo::rerun-if-changed={}", ida.display());
 
     for file in [
         "lib.rs",

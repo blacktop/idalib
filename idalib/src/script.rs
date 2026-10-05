@@ -7,6 +7,15 @@ pub struct ScriptOutput {
     pub stdout: String,
     pub stderr: String,
     pub error: Option<String>,
+    /// JSON encoding of the script's trailing expression, when it has one
+    /// that evaluates to something other than `None`. Always valid JSON of at
+    /// most 1 MiB; a larger result fails the script instead.
+    pub result_json: Option<String>,
+    /// The value could not be encoded as strict JSON (unsupported type,
+    /// non-finite float, circular reference, or an integer outside
+    /// `i64::MIN..=u64::MAX` anywhere inside it), so `result_json` is the
+    /// JSON string of its `repr()`.
+    pub result_is_repr: bool,
 }
 
 impl ScriptOutput {
@@ -16,7 +25,14 @@ impl ScriptOutput {
         } else {
             Some(r.error)
         };
+        let result_json = if r.result_json.is_empty() {
+            None
+        } else {
+            Some(r.result_json)
+        };
         Self {
+            result_json,
+            result_is_repr: r.result_is_repr,
             success: r.success,
             stdout: r.stdout_text,
             stderr: r.stderr_text,
@@ -27,7 +43,9 @@ impl ScriptOutput {
 
 /// Execute a Python snippet via the IDAPython extlang.
 ///
-/// Captures stdout/stderr via StringIO redirect. Returns an error if
+/// Captures stdout/stderr via StringIO redirect. The code runs in the
+/// interpreter's globals, so names it defines persist for later calls, and a
+/// trailing expression is returned as [`ScriptOutput::result_json`]. Returns an error if
 /// the Python extlang is not available (plugin not loaded).
 ///
 /// Must be called from the main thread (IDA requirement).

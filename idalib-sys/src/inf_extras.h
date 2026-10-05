@@ -153,6 +153,10 @@ inline bool idalib_inf_merge_strlits() { return inf_merge_strlits(); }
 
 inline uval_t idalib_inf_get_baseaddr()  { return inf_get_baseaddr(); }
 
+// The loaded image's base (INF_IMAGEBASE), which rebasing updates; distinct
+// from inf_get_baseaddr, the paragraph base used by segmented formats.
+inline ea_t idalib_inf_get_imagebase() { return getinf(INF_IMAGEBASE); }
+
 inline sel_t idalib_inf_get_start_ss()  { return inf_get_start_ss(); }
 
 inline sel_t idalib_inf_get_start_cs()  { return inf_get_start_cs(); }
