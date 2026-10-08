@@ -52,7 +52,8 @@ pub struct LocalVariable {
     pub has_user_type: bool,
 }
 
-/// A uniquely commentable line in the current Hex-Rays pseudocode.
+/// A commentable line in the current Hex-Rays pseudocode: the first rendered
+/// line for each end-of-line comment location.
 #[derive(Debug, Clone)]
 pub struct PseudocodeCommentLocation {
     /// Opaque SDK, function, address, and placement identity. Reanalysis may
@@ -231,7 +232,8 @@ impl<'a> CFunction<'a> {
         unsafe { idalib_hexrays_cfunc_pseudocode(self.ptr) }
     }
 
-    /// Discover unique end-of-line comment locations in the current rendering.
+    /// Discover end-of-line comment locations in the current rendering. Lines
+    /// that share a location yield only the first, where Hex-Rays renders it.
     pub fn pseudocode_comment_locations(&self) -> Result<Vec<PseudocodeCommentLocation>, IDAError> {
         // SAFETY: `_obj` retains the non-null cfunc on the IDB-owning thread.
         // The bounded shim returns owned strings and translates C++ exceptions.
@@ -249,12 +251,9 @@ impl<'a> CFunction<'a> {
             .collect())
     }
 
-    /// Set or remove (with empty text) a comment at a current, unique location.
+    /// Set or remove (with empty text) a comment at a current location.
     /// Consumes the view because the edit invalidates cached decompilation.
     pub fn set_pseudocode_comment(self, locator: &str, comment: &str) -> Result<(), IDAError> {
-        if locator.is_empty() || locator.len() > 128 || comment.len() > 16_384 {
-            return Err(IDAError::ffi_with("invalid pseudocode comment input"));
-        }
         let locator = CString::new(locator).map_err(IDAError::ffi)?;
         let comment = CString::new(comment).map_err(IDAError::ffi)?;
         // SAFETY: `_obj` retains `ptr`; both C strings live through the call.
