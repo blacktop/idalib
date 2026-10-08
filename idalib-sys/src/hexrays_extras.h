@@ -224,6 +224,7 @@ struct decompiler_lvar_info final {
   ::rust::String name;
   ::rust::String type_name;
   ::rust::String location;
+  ::rust::String locator;
   ::std::uint64_t definition_address;
   ::std::int32_t width;
   bool is_argument;
@@ -247,6 +248,47 @@ inline size_t idalib_hexrays_lvar_count(cfunc_t *f) {
   return vars == nullptr ? 0 : vars->size();
 }
 
+// Only return identities whose SDK serialization preserves the full location.
+// In particular, vdloc_t uses all 32 register bits for a single microregister.
+// Never deserialize caller-provided bytes into an SDK object.
+inline rust::String idalib_hexrays_lvar_locator(ea_t entry_ea, const lvar_t &var) {
+  const auto simple_location = [](const argloc_t &loc) {
+    return loc.is_stkoff() || loc.is_reg() || loc.is_rrel() || loc.is_ea();
+  };
+  if (!simple_location(var.location)) {
+    if (!var.location.is_scattered() || var.location.scattered().size() > 128) {
+      return rust::String();
+    }
+    // No recursive or plugin-defined serialization. Each part is fixed-size.
+    for (const argpart_t &part : var.location.scattered()) {
+      if (!simple_location(part)) {
+        return rust::String();
+      }
+    }
+  }
+  qtype encoded;
+  if (var.width <= 0 || !append_argloc(&encoded, var.location)
+      || encoded.empty() || encoded.length() > 4096) {
+    return rust::String();
+  }
+  argloc_t decoded;
+  const type_t *cursor = encoded.c_str();
+  if (!extract_argloc(&decoded, &cursor, false)
+      || cursor != encoded.c_str() + encoded.length()
+      || compare_arglocs(decoded, var.location) != 0) {
+    return rust::String();
+  }
+  qstring result;
+  result.sprnt("lvar1:%d:%016llx:%016llx:%08x:", IDA_SDK_VERSION,
+               static_cast<unsigned long long>(entry_ea),
+               static_cast<unsigned long long>(var.defea),
+               static_cast<unsigned int>(var.width));
+  for (size_t i = 0; i < encoded.length(); ++i) {
+    result.cat_sprnt("%02x", static_cast<unsigned int>(encoded[i]));
+  }
+  return rust::String(result.c_str());
+}
+
 inline bool idalib_hexrays_lvar_info(cfunc_t *f, size_t index,
                                      decompiler_lvar_info &out) {
   const lvars_t *vars = idalib_hexrays_named_lvars(f);
@@ -263,6 +305,7 @@ inline bool idalib_hexrays_lvar_info(cfunc_t *f, size_t index,
   out.name = rust::String(var.name.c_str());
   out.type_name = rust::String(type_name.c_str());
   out.location = rust::String(location.c_str());
+  out.locator = idalib_hexrays_lvar_locator(f->entry_ea, var);
   out.definition_address = var.defea;
   out.width = var.width;
   out.is_argument = var.is_arg_var();

@@ -38,6 +38,10 @@ pub struct LocalVariable {
     pub name: String,
     pub type_name: String,
     pub location: String,
+    /// Opaque identity for this SDK version, function, definition address,
+    /// location and width. Independent of the display name. `None` when the
+    /// SDK cannot serialize the location losslessly. Reanalysis can retire it.
+    pub locator: Option<String>,
     /// IDA's definition address, or `None` if unknown.
     pub definition_address: Option<Address>,
     pub width: i32,
@@ -177,6 +181,7 @@ impl<'a> CFunction<'a> {
             name: out.name,
             type_name: out.type_name,
             location: out.location,
+            locator: (!out.locator.is_empty()).then_some(out.locator),
             definition_address: (out.definition_address != u64::MAX)
                 .then_some(out.definition_address),
             width: out.width,

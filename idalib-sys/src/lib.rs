@@ -840,6 +840,7 @@ mod ffix {
         name: String,
         type_name: String,
         location: String,
+        locator: String,
         definition_address: u64,
         width: i32,
         is_argument: bool,
