@@ -403,7 +403,7 @@ pub mod hexrays {
 
     // NOTE: we don't export it; ideally this conversion should exist in idalib (not -sys), but it
     // having the conversion here gives us a cleaner interface.
-    use super::ffi::merror_t;
+    use crate::ffi::merror_t;
 
     #[derive(Debug, Error)]
     #[error("{desc}")]
@@ -591,7 +591,7 @@ pub mod hexrays {
     }
 
     pub unsafe fn decompile_func(
-        f: *mut super::ffi::func_t,
+        f: *mut crate::ffi::func_t,
         all_blocks: bool,
     ) -> Result<cxx::UniquePtr<cfuncptr_t>, HexRaysError> {
         let mut flags = __impl::DECOMP_NO_WAIT | __impl::DECOMP_NO_CACHE;
@@ -600,8 +600,8 @@ pub mod hexrays {
             flags |= __impl::DECOMP_ALL_BLKS;
         }
 
-        let mut failure = super::ffix::hexrays_error_t::default();
-        let result = super::ffix::idalib_hexrays_decompile_func(
+        let mut failure = crate::ffix::hexrays_error_t::default();
+        let result = crate::ffix::idalib_hexrays_decompile_func(
             f,
             &mut failure as *mut _,
             (flags as i32).into(),
@@ -628,7 +628,7 @@ pub mod idp {
 
     include!(concat!(env!("OUT_DIR"), "/idp.rs"));
 
-    pub use super::ffix::idalib_assemble_line;
+    pub use crate::ffix::idalib_assemble_line;
 }
 
 pub mod inf {
@@ -643,8 +643,8 @@ pub mod inf {
         type Kind = cxx::kind::Trivial;
     }
 
-    pub use super::ffi::filetype_t;
-    pub use super::ffix::{
+    pub use crate::ffi::filetype_t;
+    pub use crate::ffix::{
         idalib_inf_abi_set_by_user, idalib_inf_allow_non_matched_ops, idalib_inf_allow_sigmulti,
         idalib_inf_append_sigcmt, idalib_inf_big_arg_align, idalib_inf_check_manual_ops,
         idalib_inf_check_unicode_strlits, idalib_inf_coagulate_code, idalib_inf_coagulate_data,
@@ -712,7 +712,7 @@ pub mod inf {
 pub mod auto_analysis {
     #![allow(unused)]
 
-    pub use super::ffix::{idalib_auto_is_ok, idalib_get_auto_state};
+    pub use crate::ffix::{idalib_auto_is_ok, idalib_get_auto_state};
 }
 
 pub mod registry {
@@ -1042,29 +1042,29 @@ mod ffix {
         type c_longlong = autocxx::c_longlong;
         type c_ulonglong = autocxx::c_ulonglong;
 
-        // type comp_t = super::ffi::comp_t;
-        type compiler_info_t = super::inf::compiler_info_t;
-        // type cm_t = super::ffi::cm_t;
-        type filetype_t = super::ffi::filetype_t;
-        type range_t = super::pod::range_t;
+        // type comp_t = crate::ffi::comp_t;
+        type compiler_info_t = crate::inf::compiler_info_t;
+        // type cm_t = crate::ffi::cm_t;
+        type filetype_t = crate::ffi::filetype_t;
+        type range_t = crate::pod::range_t;
         // type uval_t = autocxx::c_ulonglong;
 
-        type func_t = super::ffi::func_t;
-        type processor_t = super::ffi::processor_t;
-        type qflow_chart_t = super::ffi::qflow_chart_t;
-        type qbasic_block_t = super::ffi::qbasic_block_t;
-        type segment_t = super::ffi::segment_t;
+        type func_t = crate::ffi::func_t;
+        type processor_t = crate::ffi::processor_t;
+        type qflow_chart_t = crate::ffi::qflow_chart_t;
+        type qbasic_block_t = crate::ffi::qbasic_block_t;
+        type segment_t = crate::ffi::segment_t;
 
         // cfuncptr_t
-        type qrefcnt_t_cfunc_t_AutocxxConcrete = super::ffi::qrefcnt_t_cfunc_t_AutocxxConcrete;
-        type cfunc_t = super::hexrays::cfunc_t;
-        type cblock_t = super::hexrays::cblock_t;
-        type cinsn_t = super::hexrays::cinsn_t;
+        type qrefcnt_t_cfunc_t_AutocxxConcrete = crate::ffi::qrefcnt_t_cfunc_t_AutocxxConcrete;
+        type cfunc_t = crate::hexrays::cfunc_t;
+        type cblock_t = crate::hexrays::cblock_t;
+        type cinsn_t = crate::hexrays::cinsn_t;
 
         type cblock_iter;
         type eamap_result;
 
-        type plugin_t = super::ffi::plugin_t;
+        type plugin_t = crate::ffi::plugin_t;
 
         unsafe fn init_library(argc: c_int, argv: *mut *mut c_char) -> c_int;
 
@@ -1575,16 +1575,16 @@ pub const fn from_ea(v: ea_t) -> u64 {
 }
 
 pub mod entry {
-    pub use super::ffi::{get_entry, get_entry_ordinal, get_entry_qty, uval_t};
-    pub use super::ffix::idalib_entry_name;
+    pub use crate::ffi::{get_entry, get_entry_ordinal, get_entry_qty, uval_t};
+    pub use crate::ffix::idalib_entry_name;
 }
 
 pub mod insn {
     use std::mem::MaybeUninit;
 
-    use super::ea_t;
-    use super::ffi::decode_insn;
-    pub use super::pod::insn_t;
+    use crate::ea_t;
+    use crate::ffi::decode_insn;
+    pub use crate::pod::insn_t;
 
     pub fn decode(ea: ea_t) -> Option<insn_t> {
         let mut insn = MaybeUninit::<insn_t>::zeroed();
@@ -1592,14 +1592,14 @@ pub mod insn {
     }
 
     pub mod op {
-        pub use super::super::ffi::{
+        pub use crate::ffi::{
             IRI_EXTENDED, IRI_RET_LITERALLY, IRI_SKIP_RETTARGET, IRI_STRICT, dt_bitfild, dt_byte,
             dt_byte16, dt_byte32, dt_byte64, dt_code, dt_double, dt_dword, dt_float, dt_fword,
             dt_half, dt_ldbl, dt_packreal, dt_qword, dt_string, dt_tbyte, dt_unicode, dt_void,
             dt_word, o_displ, o_far, o_idpspec0, o_idpspec1, o_idpspec2, o_idpspec3, o_idpspec4,
             o_idpspec5, o_imm, o_mem, o_near, o_phrase, o_reg, o_void,
         };
-        pub use super::super::pod::{
+        pub use crate::pod::{
             OF_NO_BASE_DISP, OF_NUMBER, OF_OUTER_DISP, OF_SHOW, op_dtype_t, op_t, optype_t,
         };
     }
@@ -1630,11 +1630,11 @@ pub mod insn {
 }
 
 pub mod func {
-    pub use super::ffi::{
+    pub use crate::ffi::{
         calc_thunk_func_target, fc_block_type_t, func_t, get_func, get_func_num, get_func_qty,
         getn_func, lock_func, qbasic_block_t, qflow_chart_t,
     };
-    pub use super::ffix::{
+    pub use crate::ffix::{
         idalib_func_flags, idalib_func_flow_chart, idalib_func_name, idalib_get_func_cmt,
         idalib_qbasic_block_preds, idalib_qbasic_block_succs, idalib_qflow_graph_calc_block_type,
         idalib_qflow_graph_entry, idalib_qflow_graph_exit, idalib_qflow_graph_getn_block,
@@ -1642,7 +1642,7 @@ pub mod func {
     };
 
     pub mod flags {
-        pub use super::super::ffi::{
+        pub use crate::ffi::{
             FUNC_BOTTOMBP, FUNC_FAR, FUNC_FRAME, FUNC_FUZZY_SP, FUNC_HIDDEN, FUNC_LIB, FUNC_LUMINA,
             FUNC_NORET, FUNC_NORET_PENDING, FUNC_OUTLINE, FUNC_PROLOG_OK, FUNC_PURGED_OK,
             FUNC_REANALYZE, FUNC_RESERVED, FUNC_SP_READY, FUNC_STATICDEF, FUNC_TAIL, FUNC_THUNK,
@@ -1651,7 +1651,7 @@ pub mod func {
     }
 
     pub mod cfg_flags {
-        pub use super::super::ffi::{
+        pub use crate::ffi::{
             FC_APPND, FC_CALL_ENDS, FC_CHKBREAK, FC_NOEXT, FC_NOPREDS, FC_OUTLINES, FC_PRINT,
             FC_RESERVED,
         };
@@ -1659,16 +1659,16 @@ pub mod func {
 }
 
 pub mod processor {
-    pub use super::ffi::{get_ph, processor_t};
-    pub use super::ffix::{
+    pub use crate::ffi::{get_ph, processor_t};
+    pub use crate::ffix::{
         idalib_is_thumb_at, idalib_ph_id, idalib_ph_long_name, idalib_ph_short_name,
         idalib_set_thumb_at,
     };
-    pub use super::idp as ids;
+    pub use crate::idp as ids;
 }
 
 pub mod segment {
-    pub use super::ffi::{
+    pub use crate::ffi::{
         SEG_ABSSYM, SEG_BSS, SEG_CODE, SEG_COMM, SEG_DATA, SEG_GRP, SEG_IMEM, SEG_IMP,
         SEG_MAX_SEGTYPE_CODE, SEG_NORM, SEG_NULL, SEG_UNDF, SEG_XTRN, SEGPERM_EXEC, SEGPERM_MAXVAL,
         SEGPERM_READ, SEGPERM_WRITE, get_segm_by_name, get_segm_qty, getnseg, getseg, lock_segment,
@@ -1676,73 +1676,73 @@ pub mod segment {
         saRel512Bytes, saRel1024Bytes, saRel2048Bytes, saRelByte, saRelDble, saRelPage, saRelPara,
         saRelQword, saRelWord, segment_t,
     };
-    pub use super::ffix::{
+    pub use crate::ffix::{
         idalib_segm_align, idalib_segm_bitness, idalib_segm_bytes, idalib_segm_name,
         idalib_segm_perm, idalib_segm_type, idalib_set_segment_addressing,
     };
 }
 
 pub mod bytes {
-    pub use super::ffi::{flags64_t, get_flags, is_code, is_data};
-    pub use super::ffix::{
+    pub use crate::ffi::{flags64_t, get_flags, is_code, is_data};
+    pub use crate::ffix::{
         idalib_get_byte, idalib_get_bytes, idalib_get_dword, idalib_get_qword, idalib_get_word,
         idalib_patch_bytes, idalib_recreate_insn, idalib_visit_patched_bytes, patched_byte_info,
     };
 }
 
 pub mod util {
-    pub use super::ffi::{
+    pub use crate::ffi::{
         is_align_insn, is_basic_block_end, is_call_insn, is_indirect_jump_insn, is_ret_insn,
         next_head, prev_head, str2reg,
     };
 }
 
 pub mod xref {
-    pub use super::ffi::{
+    pub use crate::ffi::{
         XREF_ALL, XREF_BASE, XREF_DATA, XREF_FAR, XREF_MASK, XREF_PASTEND, XREF_TAIL, XREF_TID,
         XREF_USER, cref_t, dref_t, has_external_refs, xrefblk_t_first_from, xrefblk_t_first_to,
         xrefblk_t_next_from, xrefblk_t_next_to,
     };
-    pub use super::pod::xrefblk_t;
+    pub use crate::pod::xrefblk_t;
 }
 
 pub mod comments {
-    pub use super::ffi::{append_cmt, set_cmt};
-    pub use super::ffix::idalib_get_cmt;
+    pub use crate::ffi::{append_cmt, set_cmt};
+    pub use crate::ffix::idalib_get_cmt;
 }
 
 pub mod conversions {
-    pub use super::ffix::idalib_ea2str;
+    pub use crate::ffix::idalib_ea2str;
 }
 
 pub mod lines {
-    pub use super::ffix::idalib_generate_disasm_line;
+    pub use crate::ffix::idalib_generate_disasm_line;
 }
 
 pub mod bookmarks {
-    pub use super::ffix::{
+    pub use crate::ffix::{
         idalib_bookmarks_t_erase, idalib_bookmarks_t_find_index, idalib_bookmarks_t_get,
         idalib_bookmarks_t_get_desc, idalib_bookmarks_t_mark, idalib_bookmarks_t_size,
     };
 }
 
 pub mod search {
-    pub use super::ffix::{idalib_find_defined, idalib_find_imm, idalib_find_text};
+    pub use crate::ffix::{idalib_find_defined, idalib_find_imm, idalib_find_text};
 }
 
 pub mod strings {
-    pub use super::ffi::{build_strlist, clear_strlist, get_strlist_qty};
-    pub use super::ffix::{idalib_get_strlist_item_addr, idalib_get_strlist_item_length};
+    pub use crate::ffi::{build_strlist, clear_strlist, get_strlist_qty};
+    pub use crate::ffix::{idalib_get_strlist_item_addr, idalib_get_strlist_item_length};
 }
 
 pub mod loader {
-    pub use super::ffi::{find_plugin, plugin_t, run_plugin};
-    pub use super::ffix::{
+    pub use crate::ffi::{find_plugin, plugin_t, run_plugin};
+    pub use crate::ffix::{
         idalib_idb_path, idalib_plugin_flags, idalib_plugin_version, idalib_save_database,
     };
 
     pub mod flags {
-        pub use super::super::ffi::{
+        pub use crate::ffi::{
             PLUGIN_DBG, PLUGIN_DRAW, PLUGIN_FIX, PLUGIN_HIDE, PLUGIN_MOD, PLUGIN_MULTI,
             PLUGIN_PROC, PLUGIN_SCRIPTED, PLUGIN_SEG, PLUGIN_UNL,
         };
@@ -1750,28 +1750,28 @@ pub mod loader {
 }
 
 pub mod nalt {
-    pub use super::ffi::{
+    pub use crate::ffi::{
         retrieve_input_file_md5, retrieve_input_file_sha256, retrieve_input_file_size,
     };
-    pub use super::ffix::idalib_get_input_file_path;
+    pub use crate::ffix::idalib_get_input_file_path;
 }
 
 pub mod name {
-    pub use super::ffi::{
+    pub use crate::ffi::{
         get_nlist_ea, get_nlist_idx, get_nlist_name, get_nlist_size, is_in_nlist, is_public_name,
         is_weak_name, set_name,
     };
 }
 
 pub mod udt {
-    pub use super::ffix::{
+    pub use crate::ffix::{
         idalib_get_ordinal_limit, idalib_get_udt_info, idalib_get_udt_member,
         idalib_get_udt_member_tid, udt_info, udt_member_info,
     };
 }
 
 pub mod types {
-    pub use super::ffix::{
+    pub use crate::ffix::{
         idalib_apply_decl_type, idalib_apply_named_type, idalib_declare_type, idalib_declare_types,
         idalib_get_local_type, idalib_guess_tinfo, local_type_info, type_decl_result,
         type_guess_result,
@@ -1779,18 +1779,18 @@ pub mod types {
 }
 
 pub mod frame {
-    pub use super::ffix::{
+    pub use crate::ffix::{
         frame_info, frame_member_info, idalib_define_stkvar, idalib_delete_stkvar,
         idalib_get_frame_info, idalib_get_frame_member, idalib_set_stkvar_type, stkvar_result,
     };
 }
 
 pub mod script {
-    pub use super::ffix::{idalib_run_python_snippet, script_result};
+    pub use crate::ffix::{idalib_run_python_snippet, script_result};
 }
 
 pub mod debugger {
-    pub use super::ffix::{
+    pub use crate::ffix::{
         debugger_module_info, idalib_debugger_attach, idalib_debugger_detach,
         idalib_debugger_launch, idalib_debugger_load, idalib_debugger_modules,
         idalib_debugger_process_state, idalib_debugger_terminate,
@@ -1798,7 +1798,7 @@ pub mod debugger {
 }
 
 pub mod dscu {
-    pub use super::ffix::{
+    pub use crate::ffix::{
         dscu_image_info, dscu_region_info, dscu_string_match, dscu_symbol_match,
         idalib_dscu_available, idalib_dscu_find_strings, idalib_dscu_find_symbols,
         idalib_dscu_get_image_dependencies, idalib_dscu_get_image_index,
@@ -1816,8 +1816,8 @@ pub mod ida {
     use autocxx::prelude::*;
     pub use ffi::auto_wait;
 
-    use super::platform::is_main_thread;
-    use super::{IDAError, ea_t, ffi, ffix};
+    use crate::platform::is_main_thread;
+    use crate::{IDAError, ea_t, ffi, ffix};
 
     pub fn is_license_valid() -> bool {
         assert!(
