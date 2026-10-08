@@ -267,8 +267,7 @@ inline rust::String idalib_hexrays_lvar_locator(ea_t entry_ea, const lvar_t &var
     }
   }
   qtype encoded;
-  if (var.width <= 0 || !append_argloc(&encoded, var.location)
-      || encoded.empty() || encoded.length() > 4096) {
+  if (!append_argloc(&encoded, var.location)) {
     return rust::String();
   }
   argloc_t decoded;
@@ -278,14 +277,13 @@ inline rust::String idalib_hexrays_lvar_locator(ea_t entry_ea, const lvar_t &var
       || compare_arglocs(decoded, var.location) != 0) {
     return rust::String();
   }
+  // The SDK identity (lvar_locator_t) is location + defea; width is not part
+  // of it, so a width-changing retype keeps the locator valid.
   qstring result;
-  result.sprnt("lvar1:%d:%016llx:%016llx:%08x:", IDA_SDK_VERSION,
+  result.sprnt("lvar1:%d:%llx:%llx:", IDA_SDK_VERSION,
                static_cast<unsigned long long>(entry_ea),
-               static_cast<unsigned long long>(var.defea),
-               static_cast<unsigned int>(var.width));
-  for (size_t i = 0; i < encoded.length(); ++i) {
-    result.cat_sprnt("%02x", static_cast<unsigned int>(encoded[i]));
-  }
+               static_cast<unsigned long long>(var.defea));
+  bytevec_t(encoded.c_str(), encoded.length()).tohex(&result, false);
   return rust::String(result.c_str());
 }
 

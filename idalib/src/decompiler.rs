@@ -38,9 +38,10 @@ pub struct LocalVariable {
     pub name: String,
     pub type_name: String,
     pub location: String,
-    /// Opaque identity for this SDK version, function, definition address,
-    /// location and width. Independent of the display name. `None` when the
-    /// SDK cannot serialize the location losslessly. Reanalysis can retire it.
+    /// Opaque identity for this SDK version, function, definition address
+    /// and location. Independent of the display name and type. `None` when
+    /// the SDK cannot serialize the location losslessly. Reanalysis can
+    /// retire it.
     pub locator: Option<String>,
     /// IDA's definition address, or `None` if unknown.
     pub definition_address: Option<Address>,
