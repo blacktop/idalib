@@ -96,6 +96,12 @@ inline rust::String idalib_hexrays_cfunc_pseudocode(cfunc_t *f) {
   return rust::String(sb.str());
 }
 
+struct decompiler_comment_location;
+rust::Vec<decompiler_comment_location>
+idalib_hexrays_comment_locations(cfunc_t *f);
+void idalib_hexrays_set_pseudocode_comment(cfunc_t *f, const char *locator,
+                                          const char *comment);
+
 inline cblock_t *idalib_hexrays_cfunc_body(cfunc_t *f) {
   if (f == nullptr) {
     return nullptr;

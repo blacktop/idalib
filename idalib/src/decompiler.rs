@@ -9,9 +9,10 @@ use crate::ffi::hexrays::{
     idalib_hexrays_cblock_len, idalib_hexrays_cfunc_body, idalib_hexrays_cfunc_find_stmts_at,
     idalib_hexrays_cfunc_get_stmt_bounds, idalib_hexrays_cfunc_has_eamap,
     idalib_hexrays_cfunc_pseudocode, idalib_hexrays_cfuncptr_inner, idalib_hexrays_cinsn_ea,
-    idalib_hexrays_cinsn_op, idalib_hexrays_cinsn_print, idalib_hexrays_eamap_result_len,
-    idalib_hexrays_eamap_result_next, idalib_hexrays_lvar_count, idalib_hexrays_lvar_info,
-    idalib_hexrays_rename_lvar, idalib_hexrays_set_lvar_type,
+    idalib_hexrays_cinsn_op, idalib_hexrays_cinsn_print, idalib_hexrays_comment_locations,
+    idalib_hexrays_eamap_result_len, idalib_hexrays_eamap_result_next, idalib_hexrays_lvar_count,
+    idalib_hexrays_lvar_info, idalib_hexrays_rename_lvar, idalib_hexrays_set_lvar_type,
+    idalib_hexrays_set_pseudocode_comment,
 };
 use crate::idb::IDB;
 use crate::{Address, IDAError};
@@ -49,6 +50,19 @@ pub struct LocalVariable {
     pub is_argument: bool,
     pub has_user_name: bool,
     pub has_user_type: bool,
+}
+
+/// A uniquely commentable line in the current Hex-Rays pseudocode.
+#[derive(Debug, Clone)]
+pub struct PseudocodeCommentLocation {
+    /// Opaque SDK, function, address, and placement identity. Reanalysis may
+    /// retire it. Obtain a new list when an edit rejects a stale locator.
+    pub locator: String,
+    pub address: Address,
+    /// One-based line number in the full pseudocode, for display only.
+    pub line_number: u32,
+    pub text: String,
+    pub comment: String,
 }
 
 pub struct CFunction<'a> {
@@ -215,6 +229,41 @@ impl<'a> CFunction<'a> {
     /// Get the full pseudocode for this function as a string.
     pub fn pseudocode(&self) -> String {
         unsafe { idalib_hexrays_cfunc_pseudocode(self.ptr) }
+    }
+
+    /// Discover unique end-of-line comment locations in the current rendering.
+    pub fn pseudocode_comment_locations(&self) -> Result<Vec<PseudocodeCommentLocation>, IDAError> {
+        // SAFETY: `_obj` retains the non-null cfunc on the IDB-owning thread.
+        // The bounded shim returns owned strings and translates C++ exceptions.
+        let locations =
+            unsafe { idalib_hexrays_comment_locations(self.ptr) }.map_err(IDAError::ffi)?;
+        Ok(locations
+            .into_iter()
+            .map(|location| PseudocodeCommentLocation {
+                locator: location.locator,
+                address: location.address,
+                line_number: location.line_number,
+                text: location.text,
+                comment: location.comment,
+            })
+            .collect())
+    }
+
+    /// Set or remove (with empty text) a comment at a current, unique location.
+    /// Consumes the view because the edit invalidates cached decompilation.
+    pub fn set_pseudocode_comment(self, locator: &str, comment: &str) -> Result<(), IDAError> {
+        if locator.is_empty() || locator.len() > 128 || comment.len() > 16_384 {
+            return Err(IDAError::ffi_with("invalid pseudocode comment input"));
+        }
+        let locator = CString::new(locator).map_err(IDAError::ffi)?;
+        let comment = CString::new(comment).map_err(IDAError::ffi)?;
+        // SAFETY: `_obj` retains `ptr`; both C strings live through the call.
+        // The shim validates and matches a current native location, catches
+        // C++ exceptions, and no reference to the invalidated view escapes.
+        unsafe {
+            idalib_hexrays_set_pseudocode_comment(self.ptr, locator.as_ptr(), comment.as_ptr())
+        }
+        .map_err(IDAError::ffi)
     }
 
     /// Get the function body as a CBlock.

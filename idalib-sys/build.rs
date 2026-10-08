@@ -138,6 +138,7 @@ fn main() {
     builder.file(ffi_path.join("bytes_extras.cc"));
     builder.file(ffi_path.join("lumina_extras.cc"));
     builder.file(ffi_path.join("debugger_extras.cc"));
+    builder.file(ffi_path.join("hexrays_comments.cc"));
 
     let arch = target_arch();
 
@@ -307,6 +308,7 @@ fn main() {
         "func_extras.h",
         "funcs_no_comparisons.hpp",
         "hexrays_extras.h",
+        "hexrays_comments.cc",
         "idalib_extras.h",
         "inf_extras.h",
         "kernwin_extras.h",

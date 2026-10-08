@@ -539,15 +539,16 @@ pub mod hexrays {
         carg_t, carglist_t, cfuncptr_t, init_hexrays_plugin, term_hexrays_plugin,
     };
     pub use crate::ffix::{
-        addr_range, cblock_iter, decompiler_lvar_info, eamap_result, idalib_hexrays_cblock_iter,
-        idalib_hexrays_cblock_iter_next, idalib_hexrays_cblock_len, idalib_hexrays_cfunc_body,
-        idalib_hexrays_cfunc_find_stmts_at, idalib_hexrays_cfunc_get_stmt_bounds,
-        idalib_hexrays_cfunc_has_eamap, idalib_hexrays_cfunc_pseudocode,
-        idalib_hexrays_cfuncptr_inner, idalib_hexrays_cinsn_ea, idalib_hexrays_cinsn_op,
-        idalib_hexrays_cinsn_print, idalib_hexrays_decompile_func, idalib_hexrays_eamap_result_len,
+        addr_range, cblock_iter, decompiler_comment_location, decompiler_lvar_info, eamap_result,
+        idalib_hexrays_cblock_iter, idalib_hexrays_cblock_iter_next, idalib_hexrays_cblock_len,
+        idalib_hexrays_cfunc_body, idalib_hexrays_cfunc_find_stmts_at,
+        idalib_hexrays_cfunc_get_stmt_bounds, idalib_hexrays_cfunc_has_eamap,
+        idalib_hexrays_cfunc_pseudocode, idalib_hexrays_cfuncptr_inner, idalib_hexrays_cinsn_ea,
+        idalib_hexrays_cinsn_op, idalib_hexrays_cinsn_print, idalib_hexrays_comment_locations,
+        idalib_hexrays_decompile_func, idalib_hexrays_eamap_result_len,
         idalib_hexrays_eamap_result_next, idalib_hexrays_eamap_result_reset, idalib_hexrays_init,
         idalib_hexrays_lvar_count, idalib_hexrays_lvar_info, idalib_hexrays_rename_lvar,
-        idalib_hexrays_set_lvar_type,
+        idalib_hexrays_set_lvar_type, idalib_hexrays_set_pseudocode_comment,
     };
 
     unsafe impl cxx::ExternType for cfunc_t {
@@ -848,6 +849,15 @@ mod ffix {
         has_user_type: bool,
     }
 
+    struct decompiler_comment_location {
+        locator: String,
+        address: u64,
+        placement: u32,
+        line_number: u32,
+        text: String,
+        comment: String,
+    }
+
     /// Address range for statement boundaries
     #[derive(Debug, Clone, Copy, Default)]
     struct addr_range {
@@ -1145,6 +1155,14 @@ mod ffix {
             f: *const qrefcnt_t_cfunc_t_AutocxxConcrete,
         ) -> *mut cfunc_t;
         unsafe fn idalib_hexrays_cfunc_pseudocode(f: *mut cfunc_t) -> String;
+        unsafe fn idalib_hexrays_comment_locations(
+            f: *mut cfunc_t,
+        ) -> Result<Vec<decompiler_comment_location>>;
+        unsafe fn idalib_hexrays_set_pseudocode_comment(
+            f: *mut cfunc_t,
+            locator: *const c_char,
+            comment: *const c_char,
+        ) -> Result<()>;
         unsafe fn idalib_hexrays_cfunc_body(f: *mut cfunc_t) -> *mut cblock_t;
         unsafe fn idalib_hexrays_lvar_count(f: *mut cfunc_t) -> Result<usize>;
         unsafe fn idalib_hexrays_lvar_info(
